@@ -5,10 +5,11 @@ import json
 import urllib.request
 from datetime import datetime
 
+from config.overrides import get_subreddits
 from models.schemas import Signal, SignalSource
 
 # Subreddits to monitor for financial risk signals
-SUBREDDITS = [
+_DEFAULT_SUBREDDITS = [
     "wallstreetbets",
     "investing",
     "economics",
@@ -17,6 +18,8 @@ SUBREDDITS = [
     "RealEstate",
     "CryptoCurrency",
 ]
+
+SUBREDDITS = get_subreddits() or _DEFAULT_SUBREDDITS
 
 
 def fetch_reddit_signals(subreddits: list[str] | None = None, limit: int = 25) -> list[Signal]:

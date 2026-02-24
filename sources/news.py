@@ -5,6 +5,7 @@ from datetime import datetime
 
 import feedparser
 
+from config.overrides import get_news_feeds
 from config.settings import settings
 from models.schemas import Signal, SignalSource
 
@@ -15,7 +16,7 @@ def _make_id(title: str, url: str) -> str:
 
 def fetch_news_signals(feed_urls: list[str] | None = None) -> list[Signal]:
     """Fetch and parse RSS feeds into Signal objects."""
-    urls = feed_urls or settings.news_feeds
+    urls = feed_urls or get_news_feeds() or settings.news_feeds
     signals: list[Signal] = []
 
     for url in urls:

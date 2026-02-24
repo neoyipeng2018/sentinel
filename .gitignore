@@ -9,3 +9,4 @@ dist/
 build/
 .streamlit/secrets.toml
 sentinel.db
+config/local_config.py

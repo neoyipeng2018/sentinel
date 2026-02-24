@@ -4,6 +4,7 @@ import streamlit as st
 
 from ai.chains.narrative_extractor import extract_narratives
 from ai.llm import get_llm
+from config.overrides import get_custom_signals, has_custom_llm
 from dashboard.alerts import render_alerts
 from dashboard.briefing import render_briefing
 from dashboard.overview import render_overview
@@ -43,6 +44,8 @@ with st.sidebar:
     st.divider()
 
     # LLM provider selection
+    if has_custom_llm():
+        st.info("Using custom LLM from local_config.py")
     llm_provider = st.selectbox("LLM Provider", ["Cerebras (Free)", "OpenAI"])
     prefer_free = llm_provider == "Cerebras (Free)"
 
@@ -53,6 +56,10 @@ with st.sidebar:
     fetch_news = st.checkbox("News (RSS)", value=True)
     fetch_market = st.checkbox("Market Data", value=True)
     fetch_social = st.checkbox("Social (Reddit)", value=True)
+    custom_signals_fn = get_custom_signals()
+    fetch_custom = (
+        st.checkbox("Custom Data", value=True) if custom_signals_fn else False
+    )
 
     if st.button("🔄 Refresh Signals", type="primary", use_container_width=True):
         with st.spinner("Fetching signals..."):
@@ -70,6 +77,10 @@ with st.sidebar:
             if fetch_social:
                 st.text("Fetching social signals...")
                 signals.extend(fetch_reddit_signals())
+
+            if fetch_custom and custom_signals_fn:
+                st.text("Fetching custom signals...")
+                signals.extend(custom_signals_fn())
 
             st.text(f"Collected {len(signals)} signals")
 

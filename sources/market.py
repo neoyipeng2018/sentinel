@@ -6,17 +6,19 @@ from datetime import datetime
 import pandas as pd
 import yfinance as yf
 
+from config.overrides import get_watchlist, get_z_score_threshold
 from models.schemas import Signal, SignalSource
 
 # Key tickers to monitor across asset classes
-WATCHLIST = {
+_DEFAULT_WATCHLIST = {
     "equities": ["^GSPC", "^IXIC", "^DJI", "^VIX", "^RUT"],
     "fixed_income": ["^TNX", "^TYX", "^FVX", "TLT", "HYG", "LQD"],
     "commodities": ["GC=F", "CL=F", "SI=F"],
     "fx": ["DX-Y.NYB", "EURUSD=X", "JPYUSD=X"],
     "real_estate": ["VNQ", "IYR", "XLRE"],
-
 }
+
+WATCHLIST = get_watchlist() or _DEFAULT_WATCHLIST
 
 
 def fetch_market_data(period: str = "1mo") -> pd.DataFrame:
@@ -26,8 +28,12 @@ def fetch_market_data(period: str = "1mo") -> pd.DataFrame:
     return data
 
 
-def detect_anomalies(data: pd.DataFrame, z_threshold: float = 2.0) -> list[Signal]:
+def detect_anomalies(
+    data: pd.DataFrame, z_threshold: float | None = None
+) -> list[Signal]:
     """Detect unusual moves using z-score on daily returns."""
+    if z_threshold is None:
+        z_threshold = get_z_score_threshold() or 2.0
     signals: list[Signal] = []
     all_tickers = [t for tickers in WATCHLIST.values() for t in tickers]
 

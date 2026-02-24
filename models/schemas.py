@@ -25,6 +25,7 @@ class SignalSource(str, Enum):
     NEWS = "news"
     MARKET_DATA = "market_data"
     SOCIAL = "social"
+    CUSTOM = "custom"
 
 
 class Signal(BaseModel):

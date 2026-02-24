@@ -4,6 +4,7 @@ from langchain_cerebras import ChatCerebras
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 
+from config.overrides import get_custom_llm_factory
 from config.settings import settings
 
 
@@ -34,6 +35,11 @@ def get_llm(prefer_free: bool = True, **kwargs) -> BaseChatModel:
     Set prefer_free=False to use OpenAI directly.
     """
     providers: list[callable] = []
+
+    # Check for user-defined LLM in config/local_config.py
+    custom_factory = get_custom_llm_factory()
+    if custom_factory is not None:
+        providers.append(custom_factory)
 
     if prefer_free and settings.cerebras_api_key:
         providers.append(get_cerebras_llm)
