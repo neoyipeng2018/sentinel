@@ -11,7 +11,12 @@ from dashboard.timeline import render_timeline
 from sources.market import detect_anomalies, fetch_market_data
 from sources.news import fetch_news_signals
 from sources.social import fetch_reddit_signals
-from storage.narrative_store import init_db, load_active_narratives, save_narrative
+from storage.narrative_store import (
+    clear_narratives,
+    init_db,
+    load_active_narratives,
+    save_narrative,
+)
 
 st.set_page_config(
     page_title="Sentinel",
@@ -73,6 +78,7 @@ with st.sidebar:
                 llm = get_llm(prefer_free=prefer_free)
                 narratives = extract_narratives(signals, llm)
 
+                clear_narratives()
                 for nar in narratives:
                     save_narrative(nar)
 

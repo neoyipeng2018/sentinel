@@ -68,6 +68,14 @@ def init_db() -> None:
     conn.close()
 
 
+def clear_narratives() -> None:
+    """Deactivate all existing narratives before a fresh extraction."""
+    conn = _get_conn()
+    conn.execute("UPDATE narratives SET active = 0")
+    conn.commit()
+    conn.close()
+
+
 def save_narrative(narrative: Narrative) -> None:
     """Save or update a narrative and its associated signals."""
     conn = _get_conn()

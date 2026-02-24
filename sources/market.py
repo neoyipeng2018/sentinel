@@ -15,7 +15,7 @@ WATCHLIST = {
     "commodities": ["GC=F", "CL=F", "SI=F"],
     "fx": ["DX-Y.NYB", "EURUSD=X", "JPYUSD=X"],
     "real_estate": ["VNQ", "IYR", "XLRE"],
-    "crypto": ["BTC-USD", "ETH-USD"],
+
 }
 
 

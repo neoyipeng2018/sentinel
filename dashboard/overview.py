@@ -19,7 +19,7 @@ ASSET_LABELS = {
     AssetClass.PRIVATE_MARKETS: "Private Markets",
     AssetClass.REAL_ESTATE: "Real Estate",
     AssetClass.COMMODITIES: "Commodities",
-    AssetClass.CRYPTO: "Crypto",
+
     AssetClass.FX: "FX",
 }
 

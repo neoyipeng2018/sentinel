@@ -18,7 +18,6 @@ class AssetClass(str, Enum):
     PRIVATE_MARKETS = "private_markets"
     REAL_ESTATE = "real_estate"
     COMMODITIES = "commodities"
-    CRYPTO = "crypto"
     FX = "fx"
 
 

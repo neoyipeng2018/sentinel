@@ -33,13 +33,48 @@ def get_llm(prefer_free: bool = True, **kwargs) -> BaseChatModel:
     Uses Cerebras by default for free inference. Falls back to OpenAI.
     Set prefer_free=False to use OpenAI directly.
     """
+    providers: list[callable] = []
+
     if prefer_free and settings.cerebras_api_key:
-        try:
-            return get_cerebras_llm(**kwargs)
-        except Exception:
-            pass
-
+        providers.append(get_cerebras_llm)
     if settings.openai_api_key:
-        return get_openai_llm(**kwargs)
+        providers.append(get_openai_llm)
+    if not prefer_free and settings.cerebras_api_key:
+        providers.append(get_cerebras_llm)
 
-    raise ValueError("No LLM API key configured. Set OPENAI_API_KEY or CEREBRAS_API_KEY in .env")
+    if not providers:
+        raise ValueError(
+            "No LLM API key configured. Set OPENAI_API_KEY or CEREBRAS_API_KEY in .env"
+        )
+
+    return _LLMWithFallback(providers=providers, provider_kwargs=kwargs)
+
+
+class _LLMWithFallback(BaseChatModel):
+    """Wrapper that tries providers in order, falling back on errors."""
+
+    providers: list = []
+    provider_kwargs: dict = {}
+    _current: BaseChatModel | None = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @property
+    def _llm_type(self) -> str:
+        return "fallback"
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        errors = []
+        for factory in self.providers:
+            try:
+                llm = factory(**self.provider_kwargs)
+                result = llm._generate(
+                    messages, stop=stop, run_manager=run_manager, **kwargs
+                )
+                self._current = llm
+                return result
+            except Exception as e:
+                errors.append(e)
+                continue
+        raise errors[-1]
