@@ -5,6 +5,7 @@ from datetime import datetime
 
 from langchain_core.language_models import BaseChatModel
 
+from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.prompts.templates import NARRATIVE_UPDATE_PROMPT
 from models.schemas import Narrative, RiskLevel, Signal
 
@@ -47,5 +48,10 @@ def update_narrative(
     narrative.confidence = update.get("confidence", narrative.confidence)
     narrative.signals.extend(new_signals)
     narrative.last_updated = datetime.utcnow()
+
+    # Override LLM trend with quantitative analysis when history exists
+    quant_trend = compute_quantitative_trend(narrative.id, len(narrative.signals))
+    if quant_trend:
+        narrative.trend = quant_trend
 
     return narrative

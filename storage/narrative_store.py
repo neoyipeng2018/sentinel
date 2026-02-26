@@ -60,11 +60,22 @@ def init_db() -> None:
             risk_level TEXT NOT NULL,
             trend TEXT NOT NULL,
             summary TEXT NOT NULL,
+            signal_count INTEGER DEFAULT 0,
             FOREIGN KEY (narrative_id) REFERENCES narratives(id)
         );
     """
     )
     conn.commit()
+
+    # Migration: add signal_count to narrative_history for existing DBs
+    try:
+        conn.execute(
+            "ALTER TABLE narrative_history ADD COLUMN signal_count INTEGER DEFAULT 0"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.close()
 
 
@@ -100,14 +111,16 @@ def save_narrative(narrative: Narrative) -> None:
 
     # Save history snapshot
     conn.execute(
-        """INSERT INTO narrative_history (narrative_id, timestamp, risk_level, trend, summary)
-        VALUES (?, ?, ?, ?, ?)""",
+        """INSERT INTO narrative_history
+        (narrative_id, timestamp, risk_level, trend, summary, signal_count)
+        VALUES (?, ?, ?, ?, ?, ?)""",
         (
             narrative.id,
             datetime.utcnow().isoformat(),
             narrative.risk_level.value,
             narrative.trend,
             narrative.summary,
+            len(narrative.signals),
         ),
     )
 
@@ -182,6 +195,45 @@ def load_active_narratives() -> list[Narrative]:
 
     conn.close()
     return narratives
+
+
+def _title_word_overlap(a: str, b: str) -> float:
+    """Compute word overlap ratio between two titles."""
+    words_a = set(a.lower().strip().split())
+    words_b = set(b.lower().strip().split())
+    if not words_a or not words_b:
+        return 0.0
+    overlap = len(words_a & words_b)
+    return overlap / max(len(words_a), len(words_b))
+
+
+def match_to_prior_narratives(
+    new_narratives: list[Narrative], old_narratives: list[Narrative]
+) -> None:
+    """Match new narratives to prior ones by title similarity.
+
+    If a match is found (>50% word overlap), copy the old narrative's id and
+    first_seen to the new one so that narrative_history is continuous across
+    refresh cycles. Modifies new_narratives in place.
+    """
+    if not old_narratives:
+        return
+
+    claimed: set[str] = set()
+    for new_nar in new_narratives:
+        best_score = 0.0
+        best_match: Narrative | None = None
+        for old_nar in old_narratives:
+            if old_nar.id in claimed:
+                continue
+            score = _title_word_overlap(new_nar.title, old_nar.title)
+            if score > best_score:
+                best_score = score
+                best_match = old_nar
+        if best_match and best_score > 0.5:
+            new_nar.id = best_match.id
+            new_nar.first_seen = best_match.first_seen
+            claimed.add(best_match.id)
 
 
 def get_narrative_history(narrative_id: str) -> list[dict]:
