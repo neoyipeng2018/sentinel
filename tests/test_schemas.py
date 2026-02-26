@@ -18,7 +18,7 @@ def test_narrative_creation():
         title="Test narrative",
         summary="A test risk narrative",
         risk_level=RiskLevel.HIGH,
-        affected_assets=[AssetClass.EQUITIES, AssetClass.MACRO],
+        affected_assets=[AssetClass.EQUITIES, AssetClass.FX],
     )
     assert narrative.risk_level == RiskLevel.HIGH
     assert len(narrative.affected_assets) == 2

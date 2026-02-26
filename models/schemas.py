@@ -14,7 +14,6 @@ class RiskLevel(str, Enum):
 class AssetClass(str, Enum):
     EQUITIES = "equities"
     FIXED_INCOME = "fixed_income"
-    MACRO = "macro"
     PRIVATE_MARKETS = "private_markets"
     REAL_ESTATE = "real_estate"
     COMMODITIES = "commodities"

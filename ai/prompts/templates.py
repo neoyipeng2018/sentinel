@@ -17,7 +17,7 @@ Rules:
 - Group related signals into distinct narratives
 - Each narrative must have a clear, concise title
 - Assess risk level: critical, high, medium, or low
-- Identify affected asset classes: equities, fixed_income, macro, private_markets,
+- Identify affected asset classes: equities, fixed_income, private_markets,
   real_estate, commodities, fx
 - Assess trend: intensifying, stable, or fading
 - Provide a confidence score (0-1) based on signal strength and corroboration""",

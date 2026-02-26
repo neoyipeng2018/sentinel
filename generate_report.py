@@ -25,7 +25,6 @@ RISK_COLORS = {
 ASSET_LABELS = {
     AssetClass.EQUITIES: "Equities",
     AssetClass.FIXED_INCOME: "Fixed Income",
-    AssetClass.MACRO: "Macro",
     AssetClass.PRIVATE_MARKETS: "Private Markets",
     AssetClass.REAL_ESTATE: "Real Estate",
     AssetClass.COMMODITIES: "Commodities",
