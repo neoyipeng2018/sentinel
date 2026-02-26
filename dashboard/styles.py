@@ -368,6 +368,23 @@ div[data-baseweb="select"] > div {
     line-height: 1.4;
     margin-top: 1px;
 }
+.cascade-assets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+.cascade-asset {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    background: rgba(138, 146, 164, 0.1);
+    color: #8892a4;
+    border: 1px solid rgba(138, 146, 164, 0.15);
+}
 
 /* === MUTED TEXT === */
 .text-muted {

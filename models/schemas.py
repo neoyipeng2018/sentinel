@@ -45,6 +45,7 @@ class CascadingEffect(BaseModel):
     order: int  # 2 = second order, 3 = third order
     effect: str  # what happens
     mechanism: str  # why / the causal link
+    affected_sub_assets: list[str] = Field(default_factory=list)  # e.g. ["USD/BRL", "USD/ZAR"]
 
 
 class Narrative(BaseModel):

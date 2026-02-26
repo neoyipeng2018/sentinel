@@ -67,6 +67,13 @@ def _render_cascading_effects(effects: list) -> str:
     rows = ""
     for eff in sorted_effects:
         order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
+        assets_html = ""
+        if eff.affected_sub_assets:
+            chips = " ".join(
+                f'<span class="cascade-asset">{a}</span>'
+                for a in eff.affected_sub_assets
+            )
+            assets_html = f'<div class="cascade-assets">{chips}</div>'
         rows += (
             f'<div class="cascade-row">'
             f'<span class="cascade-order">{order_label}</span>'
@@ -74,6 +81,7 @@ def _render_cascading_effects(effects: list) -> str:
             f"<div>"
             f'<div class="cascade-effect">{eff.effect}</div>'
             f'<div class="cascade-mechanism">{eff.mechanism}</div>'
+            f"{assets_html}"
             f"</div>"
             f"</div>"
         )

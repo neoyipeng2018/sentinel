@@ -67,6 +67,9 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                             order=int(eff.get("order", 2)),
                             effect=eff["effect"],
                             mechanism=eff["mechanism"],
+                            affected_sub_assets=[
+                                str(a) for a in eff.get("affected_sub_assets", [])
+                            ],
                         )
                     )
 

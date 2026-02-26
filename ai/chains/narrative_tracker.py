@@ -78,6 +78,9 @@ def update_narrative(
                         order=int(eff.get("order", 2)),
                         effect=eff["effect"],
                         mechanism=eff["mechanism"],
+                        affected_sub_assets=[
+                            str(a) for a in eff.get("affected_sub_assets", [])
+                        ],
                     )
                 )
         narrative.cascading_effects = cascading_effects

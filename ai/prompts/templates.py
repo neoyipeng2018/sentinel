@@ -34,9 +34,11 @@ Rules:
   - "order": 2 or 3 (second-order = direct knock-on, third-order = further downstream)
   - "effect": what happens (concise, one sentence)
   - "mechanism": why this follows from the primary risk (the causal link, one sentence)
+  - "affected_sub_assets": specific instruments/sub-assets impacted by THIS effect (same
+    naming convention as asset_detail — qualify with region/sector/tenor)
   Example for "Japan carry trade unwinding":
-  - order 2: "EM currencies sell off" / "Leveraged carry positions funded in JPY unwind, forcing liquidation of EM assets"
-  - order 3: "EM central banks forced into emergency rate hikes" / "Currency defense depletes reserves and tightens domestic liquidity" """,
+  - order 2: "EM currencies sell off" / "Leveraged carry positions funded in JPY unwind, forcing liquidation of EM assets" / ["USD/BRL", "USD/ZAR", "USD/MXN"]
+  - order 3: "EM central banks forced into emergency rate hikes" / "Currency defense depletes reserves and tightens domestic liquidity" / ["Brazil Selic Rate", "South Africa Repo Rate", "EM Sovereign Debt"] """,
         ),
         (
             "human",
@@ -52,8 +54,8 @@ Return your analysis as a JSON array of narratives with this structure:
     "affected_assets": ["equities", "fixed_income", ...],
     "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "fixed_income": ["US Treasuries"]}},
     "cascading_effects": [
-        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows"}},
-        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain"}}
+        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
+        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}
     ],
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
@@ -120,8 +122,8 @@ evolves, second/third order risks may change or new ones may emerge:
     "confidence": 0.0-1.0,
     "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"]}},
     "cascading_effects": [
-        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows"}},
-        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain"}}
+        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
+        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}
     ]
 }}
 
