@@ -13,7 +13,7 @@ from dashboard.briefing import render_briefing
 from dashboard.overview import render_overview
 from dashboard.styles import inject_custom_css
 from dashboard.timeline import render_timeline
-from models.schemas import RiskLevel
+from models.schemas import AssetClass, RiskLevel
 from sources.market import detect_anomalies, fetch_market_data
 from sources.news import fetch_news_signals
 from sources.social import fetch_reddit_signals
@@ -143,6 +143,37 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     narratives = load_active_narratives()
+
+    st.markdown(
+        '<div style="height: 1px; background: #1a2332; margin: 8px 0;"></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-header">ASSET CLASS FILTER</div>',
+        unsafe_allow_html=True,
+    )
+    ASSET_LABELS = {
+        AssetClass.EQUITIES: "Equities",
+        AssetClass.FIXED_INCOME: "Fixed Income",
+        AssetClass.PRIVATE_MARKETS: "Private Mkts",
+        AssetClass.REAL_ESTATE: "Real Estate",
+        AssetClass.COMMODITIES: "Commodities",
+        AssetClass.FX: "FX",
+    }
+    selected_assets = st.multiselect(
+        "Filter by asset class",
+        options=list(AssetClass),
+        default=list(AssetClass),
+        format_func=lambda a: ASSET_LABELS.get(a, a.value),
+        label_visibility="collapsed",
+    )
+    if selected_assets:
+        asset_set = set(selected_assets)
+        narratives = [
+            n for n in narratives
+            if asset_set & set(n.affected_assets)
+        ]
+
     st.markdown(
         f'<div class="text-muted" style="text-align: center;">'
         f"{len(narratives)} ACTIVE NARRATIVES</div>",
