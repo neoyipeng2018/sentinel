@@ -123,9 +123,14 @@ def render_overview(narratives: list[Narrative]) -> None:
     for nar in top:
         color = RISK_COLORS[nar.risk_level]
         level = nar.risk_level.value
-        assets_str = ", ".join(
-            ASSET_LABELS.get(a, a.value) for a in nar.affected_assets
-        )
+        asset_parts = []
+        for a in nar.affected_assets:
+            label = ASSET_LABELS.get(a, a.value)
+            subs = nar.asset_detail.get(a)
+            if subs:
+                label += f" ({', '.join(subs)})"
+            asset_parts.append(label)
+        assets_str = ", ".join(asset_parts)
 
         trend_arrow, trend_cls = TREND_DISPLAY.get(
             nar.trend, ("&#9654;", "trend-stable")

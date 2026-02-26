@@ -20,7 +20,15 @@ Rules:
 - Identify affected asset classes: equities, fixed_income, private_markets,
   real_estate, commodities, fx
 - Assess trend: intensifying, stable, or fading
-- Provide a confidence score (0-1) based on signal strength and corroboration""",
+- Provide a confidence score (0-1) based on signal strength and corroboration
+- For each affected asset class, list specific sub-assets in an "asset_detail" object keyed
+  by asset class. Qualify with country/region where relevant:
+  - equities: region + sector or index, e.g. "US Technology", "Japan Financials", "EU Autos", "Nikkei 225"
+  - fixed_income: issuer type + region + tenor where relevant, e.g. "US 10Y Treasuries", "US 2Y/10Y Spread", "EU IG Credit", "EM Sovereign Debt", "Japan 30Y JGBs"
+  - fx: currency pairs, e.g. "USD/JPY", "EUR/USD", "CNY/USD"
+  - commodities: specific names, e.g. "Brent Crude", "Gold", "US Natural Gas", "Copper"
+  - real_estate: region + segment, e.g. "US Commercial", "China Residential", "EU Office"
+  - private_markets: region + category, e.g. "US Venture Capital", "EU Private Credit", "Asia PE" """,
         ),
         (
             "human",
@@ -34,6 +42,7 @@ Return your analysis as a JSON array of narratives with this structure:
     "summary": "2-3 sentence summary of the risk narrative",
     "risk_level": "critical|high|medium|low",
     "affected_assets": ["equities", "fixed_income", ...],
+    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "fixed_income": ["US Treasuries"]}},
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
     "signal_ids": ["id1", "id2", ...]
@@ -83,6 +92,8 @@ Title: {title}
 Previous summary: {summary}
 Previous risk level: {risk_level}
 Previous trend: {trend}
+Affected assets: {affected_assets}
+Sub-asset detail: {asset_detail}
 
 New signals related to this narrative:
 {new_signals}
@@ -92,7 +103,8 @@ Provide an updated assessment as JSON:
     "summary": "updated 2-3 sentence summary",
     "risk_level": "critical|high|medium|low",
     "trend": "intensifying|stable|fading",
-    "confidence": 0.0-1.0
+    "confidence": 0.0-1.0,
+    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"]}}
 }}
 
 Return ONLY the JSON object, no other text.""",

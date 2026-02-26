@@ -45,12 +45,25 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                 for sid in item.get("signal_ids", [])
                 if sid in signal_map
             ]
+            # Parse asset_detail: convert string keys to AssetClass enums
+            raw_detail = item.get("asset_detail", {})
+            asset_detail: dict[AssetClass, list[str]] = {}
+            if isinstance(raw_detail, dict):
+                for key, subs in raw_detail.items():
+                    try:
+                        ac = AssetClass(key)
+                    except ValueError:
+                        continue
+                    if isinstance(subs, list):
+                        asset_detail[ac] = [str(s) for s in subs]
+
             narrative = Narrative(
                 id=uuid.uuid4().hex[:12],
                 title=item["title"],
                 summary=item["summary"],
                 risk_level=RiskLevel(item["risk_level"]),
                 affected_assets=[AssetClass(a) for a in item.get("affected_assets", [])],
+                asset_detail=asset_detail,
                 signals=matched_signals,
                 first_seen=datetime.utcnow(),
                 last_updated=datetime.utcnow(),

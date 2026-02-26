@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 
 from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.prompts.templates import NARRATIVE_UPDATE_PROMPT
-from models.schemas import Narrative, RiskLevel, Signal
+from models.schemas import AssetClass, Narrative, RiskLevel, Signal
 
 
 def update_narrative(
@@ -28,6 +28,10 @@ def update_narrative(
             "summary": narrative.summary,
             "risk_level": narrative.risk_level.value,
             "trend": narrative.trend,
+            "affected_assets": ", ".join(a.value for a in narrative.affected_assets),
+            "asset_detail": json.dumps(
+                {a.value: subs for a, subs in narrative.asset_detail.items()}
+            ),
             "new_signals": signal_text,
         }
     )
@@ -46,6 +50,20 @@ def update_narrative(
     narrative.risk_level = RiskLevel(update.get("risk_level", narrative.risk_level.value))
     narrative.trend = update.get("trend", narrative.trend)
     narrative.confidence = update.get("confidence", narrative.confidence)
+
+    # Parse updated asset_detail from LLM response
+    raw_detail = update.get("asset_detail", {})
+    if isinstance(raw_detail, dict) and raw_detail:
+        asset_detail: dict[AssetClass, list[str]] = {}
+        for key, subs in raw_detail.items():
+            try:
+                ac = AssetClass(key)
+            except ValueError:
+                continue
+            if isinstance(subs, list):
+                asset_detail[ac] = [str(s) for s in subs]
+        narrative.asset_detail = asset_detail
+
     narrative.signals.extend(new_signals)
     narrative.last_updated = datetime.utcnow()
 

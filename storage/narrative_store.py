@@ -76,6 +76,15 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: add asset_detail to narratives for existing DBs
+    try:
+        conn.execute(
+            "ALTER TABLE narratives ADD COLUMN asset_detail TEXT DEFAULT '{}'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.close()
 
 
@@ -93,15 +102,16 @@ def save_narrative(narrative: Narrative) -> None:
 
     conn.execute(
         """INSERT OR REPLACE INTO narratives
-        (id, title, summary, risk_level, affected_assets,
+        (id, title, summary, risk_level, affected_assets, asset_detail,
          first_seen, last_updated, trend, confidence, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
         (
             narrative.id,
             narrative.title,
             narrative.summary,
             narrative.risk_level.value,
             json.dumps([a.value for a in narrative.affected_assets]),
+            json.dumps({a.value: subs for a, subs in narrative.asset_detail.items()}),
             narrative.first_seen.isoformat(),
             narrative.last_updated.isoformat(),
             narrative.trend,
@@ -178,6 +188,15 @@ def load_active_narratives() -> list[Narrative]:
             for sr in signal_rows
         ]
 
+        # Deserialize asset_detail: JSON string -> dict[AssetClass, list[str]]
+        raw_detail = json.loads(row["asset_detail"]) if row["asset_detail"] else {}
+        asset_detail: dict[AssetClass, list[str]] = {}
+        for key, subs in raw_detail.items():
+            try:
+                asset_detail[AssetClass(key)] = subs
+            except ValueError:
+                continue
+
         narratives.append(
             Narrative(
                 id=row["id"],
@@ -185,6 +204,7 @@ def load_active_narratives() -> list[Narrative]:
                 summary=row["summary"],
                 risk_level=RiskLevel(row["risk_level"]),
                 affected_assets=[AssetClass(a) for a in json.loads(row["affected_assets"])],
+                asset_detail=asset_detail,
                 signals=signals,
                 first_seen=datetime.fromisoformat(row["first_seen"]),
                 last_updated=datetime.fromisoformat(row["last_updated"]),

@@ -87,7 +87,14 @@ def render_overview(narratives: list[Narrative]) -> str:
     rows = []
     for nar in top:
         color = RISK_COLORS[nar.risk_level]
-        assets_str = ", ".join(ASSET_LABELS.get(a, a.value) for a in nar.affected_assets)
+        asset_parts = []
+        for a in nar.affected_assets:
+            label = ASSET_LABELS.get(a, a.value)
+            subs = nar.asset_detail.get(a)
+            if subs:
+                label += f" ({', '.join(_esc(s) for s in subs)})"
+            asset_parts.append(label)
+        assets_str = ", ".join(asset_parts)
         arrow = _trend_arrow(nar.trend)
         rows.append(
             f"<details>"

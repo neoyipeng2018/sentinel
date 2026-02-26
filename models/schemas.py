@@ -47,6 +47,7 @@ class Narrative(BaseModel):
     summary: str
     risk_level: RiskLevel
     affected_assets: list[AssetClass]
+    asset_detail: dict[AssetClass, list[str]] = Field(default_factory=dict)
     signals: list[Signal] = Field(default_factory=list)
     first_seen: datetime = Field(default_factory=datetime.utcnow)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
