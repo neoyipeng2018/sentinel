@@ -28,7 +28,15 @@ Rules:
   - fx: currency pairs, e.g. "USD/JPY", "EUR/USD", "CNY/USD"
   - commodities: specific names, e.g. "Brent Crude", "Gold", "US Natural Gas", "Copper"
   - real_estate: region + segment, e.g. "US Commercial", "China Residential", "EU Office"
-  - private_markets: region + category, e.g. "US Venture Capital", "EU Private Credit", "Asia PE" """,
+  - private_markets: region + category, e.g. "US Venture Capital", "EU Private Credit", "Asia PE"
+- For each narrative, identify 2-3 cascading (second and third order) effects. These are the
+  downstream consequences that are NOT obvious from the headline risk. For each effect provide:
+  - "order": 2 or 3 (second-order = direct knock-on, third-order = further downstream)
+  - "effect": what happens (concise, one sentence)
+  - "mechanism": why this follows from the primary risk (the causal link, one sentence)
+  Example for "Japan carry trade unwinding":
+  - order 2: "EM currencies sell off" / "Leveraged carry positions funded in JPY unwind, forcing liquidation of EM assets"
+  - order 3: "EM central banks forced into emergency rate hikes" / "Currency defense depletes reserves and tightens domestic liquidity" """,
         ),
         (
             "human",
@@ -43,6 +51,10 @@ Return your analysis as a JSON array of narratives with this structure:
     "risk_level": "critical|high|medium|low",
     "affected_assets": ["equities", "fixed_income", ...],
     "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "fixed_income": ["US Treasuries"]}},
+    "cascading_effects": [
+        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows"}},
+        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain"}}
+    ],
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
     "signal_ids": ["id1", "id2", ...]
@@ -94,17 +106,23 @@ Previous risk level: {risk_level}
 Previous trend: {trend}
 Affected assets: {affected_assets}
 Sub-asset detail: {asset_detail}
+Previous cascading effects: {cascading_effects}
 
 New signals related to this narrative:
 {new_signals}
 
-Provide an updated assessment as JSON:
+Provide an updated assessment as JSON. Re-evaluate cascading effects — as the narrative
+evolves, second/third order risks may change or new ones may emerge:
 {{
     "summary": "updated 2-3 sentence summary",
     "risk_level": "critical|high|medium|low",
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
-    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"]}}
+    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"]}},
+    "cascading_effects": [
+        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows"}},
+        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain"}}
+    ]
 }}
 
 Return ONLY the JSON object, no other text.""",

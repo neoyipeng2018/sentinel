@@ -7,7 +7,7 @@ from datetime import datetime
 from langchain_core.language_models import BaseChatModel
 
 from ai.prompts.templates import NARRATIVE_EXTRACTION_PROMPT
-from models.schemas import AssetClass, Narrative, RiskLevel, Signal
+from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal
 
 
 def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrative]:
@@ -57,6 +57,19 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                     if isinstance(subs, list):
                         asset_detail[ac] = [str(s) for s in subs]
 
+            # Parse cascading effects
+            raw_effects = item.get("cascading_effects", [])
+            cascading_effects: list[CascadingEffect] = []
+            for eff in raw_effects:
+                if isinstance(eff, dict) and "effect" in eff and "mechanism" in eff:
+                    cascading_effects.append(
+                        CascadingEffect(
+                            order=int(eff.get("order", 2)),
+                            effect=eff["effect"],
+                            mechanism=eff["mechanism"],
+                        )
+                    )
+
             narrative = Narrative(
                 id=uuid.uuid4().hex[:12],
                 title=item["title"],
@@ -64,6 +77,7 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                 risk_level=RiskLevel(item["risk_level"]),
                 affected_assets=[AssetClass(a) for a in item.get("affected_assets", [])],
                 asset_detail=asset_detail,
+                cascading_effects=cascading_effects,
                 signals=matched_signals,
                 first_seen=datetime.utcnow(),
                 last_updated=datetime.utcnow(),

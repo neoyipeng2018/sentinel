@@ -5,7 +5,7 @@ from datetime import datetime
 import plotly.graph_objects as go
 import streamlit as st
 
-from models.schemas import Narrative
+from models.schemas import Narrative, RiskLevel
 from storage.narrative_store import get_narrative_history
 
 RISK_LEVEL_NUM = {
@@ -15,13 +15,64 @@ RISK_LEVEL_NUM = {
     "low": 1,
 }
 
+RISK_COLORS = {
+    RiskLevel.CRITICAL: "#FF1744",
+    RiskLevel.HIGH: "#FF9100",
+    RiskLevel.MEDIUM: "#FFEA00",
+    RiskLevel.LOW: "#00E676",
+}
+
+TREND_DISPLAY = {
+    "intensifying": ("&#9650;", "trend-up"),
+    "stable": ("&#9654;", "trend-stable"),
+    "fading": ("&#9660;", "trend-down"),
+}
+
+
+def _render_cascading_effects(effects: list) -> str:
+    """Render the causal chain of second/third order effects."""
+    if not effects:
+        return ""
+
+    sorted_effects = sorted(effects, key=lambda e: e.order)
+    rows = ""
+    for eff in sorted_effects:
+        order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
+        rows += (
+            f'<div class="cascade-row">'
+            f'<span class="cascade-order">{order_label}</span>'
+            f'<div class="cascade-connector"></div>'
+            f"<div>"
+            f'<div class="cascade-effect">{eff.effect}</div>'
+            f'<div class="cascade-mechanism">{eff.mechanism}</div>'
+            f"</div>"
+            f"</div>"
+        )
+
+    return (
+        f'<div class="cascade-chain">'
+        f'<div class="cascade-header">CASCADING EFFECTS</div>'
+        f"{rows}"
+        f"</div>"
+    )
+
 
 def render_timeline(narratives: list[Narrative]) -> None:
     """Render the narrative evolution timeline."""
-    st.header("Narrative Timeline")
+    st.markdown(
+        '<div class="section-header">'
+        '<span class="pulse-dot"></span> NARRATIVE TIMELINE'
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     if not narratives:
-        st.info("No active narratives to display.")
+        st.markdown(
+            '<div class="cmd-panel" style="text-align: center; color: #4a5568;">'
+            "No active narratives to display."
+            "</div>",
+            unsafe_allow_html=True,
+        )
         return
 
     selected = st.selectbox(
@@ -31,46 +82,131 @@ def render_timeline(narratives: list[Narrative]) -> None:
     )
 
     if selected:
-        st.markdown(f"**{selected.title}**")
-        st.markdown(f"*{selected.summary}*")
-        st.markdown(f"Trend: **{selected.trend}** | Confidence: **{selected.confidence:.0%}**")
+        # Narrative detail panel
+        color = RISK_COLORS.get(selected.risk_level, "#4a5568")
+        level = selected.risk_level.value
+        trend_arrow, trend_cls = TREND_DISPLAY.get(
+            selected.trend, ("&#9654;", "trend-stable")
+        )
 
-        # Show history if available
+        st.markdown(
+            f'<div class="cmd-panel cmd-panel-{level}">'
+            f'<div style="display: flex; align-items: center; gap: 8px; '
+            f'margin-bottom: 8px;">'
+            f'<span class="badge badge-{level}">{level}</span>'
+            f'<span style="font-weight: 600; color: #e0e4ec; font-size: 1rem;">'
+            f"{selected.title}</span>"
+            f"</div>"
+            f'<div style="color: #8892a4; font-size: 0.82rem; margin-bottom: 6px;">'
+            f"{selected.summary}</div>"
+            f'<div class="text-muted">'
+            f'<span class="{trend_cls}">{trend_arrow} {selected.trend}</span>'
+            f" &middot; Confidence: {selected.confidence:.0%}"
+            f" &middot; Signals: {len(selected.signals)}"
+            f"</div>"
+            + _render_cascading_effects(selected.cascading_effects)
+            + f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        # History chart
         history = get_narrative_history(selected.id)
         if history:
             timestamps = [datetime.fromisoformat(h["timestamp"]) for h in history]
             risk_values = [RISK_LEVEL_NUM.get(h["risk_level"], 1) for h in history]
 
             fig = go.Figure()
+
+            # Risk level zone bands
+            zone_colors = [
+                (0.5, 1.5, "rgba(0, 230, 118, 0.05)"),   # Low
+                (1.5, 2.5, "rgba(255, 234, 0, 0.05)"),    # Medium
+                (2.5, 3.5, "rgba(255, 145, 0, 0.05)"),    # High
+                (3.5, 4.5, "rgba(255, 23, 68, 0.05)"),    # Critical
+            ]
+            for y0, y1, fill in zone_colors:
+                fig.add_hrect(
+                    y0=y0, y1=y1,
+                    fillcolor=fill,
+                    line_width=0,
+                    layer="below",
+                )
+
             fig.add_trace(
                 go.Scatter(
                     x=timestamps,
                     y=risk_values,
                     mode="lines+markers",
                     name="Risk Level",
-                    line=dict(color="#FF9100", width=2),
-                    marker=dict(size=8),
+                    line=dict(color=str(color), width=3),
+                    marker=dict(size=10, color=str(color),
+                                line=dict(width=2, color="#0a0e14")),
                 )
             )
+
             fig.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
                 yaxis=dict(
                     tickvals=[1, 2, 3, 4],
-                    ticktext=["Low", "Medium", "High", "Critical"],
+                    ticktext=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
                     range=[0.5, 4.5],
+                    gridcolor="#1a2332",
+                    tickfont=dict(family="SF Mono, Consolas, monospace",
+                                  size=10, color="#4a5568"),
                 ),
-                xaxis_title="Time",
-                yaxis_title="Risk Level",
+                xaxis=dict(
+                    gridcolor="#1a2332",
+                    tickfont=dict(family="SF Mono, Consolas, monospace",
+                                  size=10, color="#4a5568"),
+                ),
                 height=300,
                 margin=dict(l=0, r=0, t=10, b=0),
+                showlegend=False,
+                font=dict(family="SF Mono, Consolas, monospace", color="#8892a4"),
             )
+
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.caption("No history data yet. History builds as narratives are updated over time.")
-
-        # Show associated signals
-        st.subheader("Associated Signals")
-        for sig in sorted(selected.signals, key=lambda s: s.timestamp, reverse=True):
-            date_str = sig.timestamp.strftime('%b %d')
             st.markdown(
-                f"- **{sig.title}** ({sig.source.value}, {date_str})"
+                '<div class="cmd-panel" style="text-align: center; color: #4a5568;">'
+                "No history data yet. History builds as narratives are updated."
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
+        # Associated signals
+        st.markdown(
+            '<div class="section-header" style="margin-top: 12px;">'
+            "ASSOCIATED SIGNALS</div>",
+            unsafe_allow_html=True,
+        )
+
+        sorted_signals = sorted(
+            selected.signals, key=lambda s: s.timestamp, reverse=True
+        )
+
+        if sorted_signals:
+            rows = []
+            for sig in sorted_signals:
+                ts = sig.timestamp.strftime("%b %d")
+                src = sig.source.value.upper()
+                rows.append(
+                    f'<div class="signal-row">'
+                    f'<div class="signal-dot" '
+                    f'style="background: {color};"></div>'
+                    f"<div style=\"flex: 1;\">"
+                    f'<span style="color: #e0e4ec; font-size: 0.82rem;">'
+                    f"{sig.title}</span>"
+                    f'<div class="signal-meta">'
+                    f'<span class="source-chip">{src}</span>'
+                    f" &middot; {ts}"
+                    f"</div></div></div>"
+                )
+
+            st.markdown(
+                '<div class="cmd-panel" style="padding: 0; overflow: hidden;">'
+                + "".join(rows)
+                + "</div>",
+                unsafe_allow_html=True,
             )

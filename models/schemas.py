@@ -39,6 +39,14 @@ class Signal(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class CascadingEffect(BaseModel):
+    """A second or third order effect stemming from a risk narrative."""
+
+    order: int  # 2 = second order, 3 = third order
+    effect: str  # what happens
+    mechanism: str  # why / the causal link
+
+
 class Narrative(BaseModel):
     """A risk narrative synthesized from multiple signals."""
 
@@ -48,6 +56,7 @@ class Narrative(BaseModel):
     risk_level: RiskLevel
     affected_assets: list[AssetClass]
     asset_detail: dict[AssetClass, list[str]] = Field(default_factory=dict)
+    cascading_effects: list[CascadingEffect] = Field(default_factory=list)
     signals: list[Signal] = Field(default_factory=list)
     first_seen: datetime = Field(default_factory=datetime.utcnow)
     last_updated: datetime = Field(default_factory=datetime.utcnow)

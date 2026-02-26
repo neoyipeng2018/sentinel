@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 
 from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.prompts.templates import NARRATIVE_UPDATE_PROMPT
-from models.schemas import AssetClass, Narrative, RiskLevel, Signal
+from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal
 
 
 def update_narrative(
@@ -31,6 +31,9 @@ def update_narrative(
             "affected_assets": ", ".join(a.value for a in narrative.affected_assets),
             "asset_detail": json.dumps(
                 {a.value: subs for a, subs in narrative.asset_detail.items()}
+            ),
+            "cascading_effects": json.dumps(
+                [e.model_dump() for e in narrative.cascading_effects]
             ),
             "new_signals": signal_text,
         }
@@ -63,6 +66,21 @@ def update_narrative(
             if isinstance(subs, list):
                 asset_detail[ac] = [str(s) for s in subs]
         narrative.asset_detail = asset_detail
+
+    # Parse updated cascading effects
+    raw_effects = update.get("cascading_effects", [])
+    if isinstance(raw_effects, list) and raw_effects:
+        cascading_effects: list[CascadingEffect] = []
+        for eff in raw_effects:
+            if isinstance(eff, dict) and "effect" in eff and "mechanism" in eff:
+                cascading_effects.append(
+                    CascadingEffect(
+                        order=int(eff.get("order", 2)),
+                        effect=eff["effect"],
+                        mechanism=eff["mechanism"],
+                    )
+                )
+        narrative.cascading_effects = cascading_effects
 
     narrative.signals.extend(new_signals)
     narrative.last_updated = datetime.utcnow()

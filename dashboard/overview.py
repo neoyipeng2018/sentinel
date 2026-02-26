@@ -58,6 +58,34 @@ def _svg_gauge(score: float, max_score: float, color: str, size: int = 80) -> st
 </svg>"""
 
 
+def _render_cascading_effects(effects: list) -> str:
+    """Render the causal chain of second/third order effects."""
+    if not effects:
+        return ""
+
+    sorted_effects = sorted(effects, key=lambda e: e.order)
+    rows = ""
+    for eff in sorted_effects:
+        order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
+        rows += (
+            f'<div class="cascade-row">'
+            f'<span class="cascade-order">{order_label}</span>'
+            f'<div class="cascade-connector"></div>'
+            f"<div>"
+            f'<div class="cascade-effect">{eff.effect}</div>'
+            f'<div class="cascade-mechanism">{eff.mechanism}</div>'
+            f"</div>"
+            f"</div>"
+        )
+
+    return (
+        f'<div class="cascade-chain">'
+        f'<div class="cascade-header">CASCADING EFFECTS</div>'
+        f"{rows}"
+        f"</div>"
+    )
+
+
 def render_overview(narratives: list[Narrative]) -> None:
     """Render the main risk overview page."""
     st.markdown(
@@ -159,7 +187,12 @@ def render_overview(narratives: list[Narrative]) -> None:
             f"Signals: {len(nar.signals)} &middot; "
             f"{updated}"
             f"</div>"
-            f"</div>"
+            + (
+                _render_cascading_effects(nar.cascading_effects)
+                if nar.cascading_effects
+                else ""
+            )
+            + f"</div>"
             f"</div></div>",
             unsafe_allow_html=True,
         )
