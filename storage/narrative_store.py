@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from models.schemas import AssetClass, Narrative, RiskLevel, Signal, SignalSource
+from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal, SignalSource
 
 DB_PATH = Path(__file__).parent.parent / "sentinel.db"
 
@@ -85,6 +85,15 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: add cascading_effects to narratives for existing DBs
+    try:
+        conn.execute(
+            "ALTER TABLE narratives ADD COLUMN cascading_effects TEXT DEFAULT '[]'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.close()
 
 
@@ -103,8 +112,8 @@ def save_narrative(narrative: Narrative) -> None:
     conn.execute(
         """INSERT OR REPLACE INTO narratives
         (id, title, summary, risk_level, affected_assets, asset_detail,
-         first_seen, last_updated, trend, confidence, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+         cascading_effects, first_seen, last_updated, trend, confidence, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
         (
             narrative.id,
             narrative.title,
@@ -112,6 +121,7 @@ def save_narrative(narrative: Narrative) -> None:
             narrative.risk_level.value,
             json.dumps([a.value for a in narrative.affected_assets]),
             json.dumps({a.value: subs for a, subs in narrative.asset_detail.items()}),
+            json.dumps([e.model_dump() for e in narrative.cascading_effects]),
             narrative.first_seen.isoformat(),
             narrative.last_updated.isoformat(),
             narrative.trend,
@@ -197,6 +207,12 @@ def load_active_narratives() -> list[Narrative]:
             except ValueError:
                 continue
 
+        # Deserialize cascading_effects
+        raw_effects = json.loads(row["cascading_effects"]) if row["cascading_effects"] else []
+        cascading_effects = [
+            CascadingEffect(**e) for e in raw_effects if isinstance(e, dict)
+        ]
+
         narratives.append(
             Narrative(
                 id=row["id"],
@@ -205,6 +221,7 @@ def load_active_narratives() -> list[Narrative]:
                 risk_level=RiskLevel(row["risk_level"]),
                 affected_assets=[AssetClass(a) for a in json.loads(row["affected_assets"])],
                 asset_detail=asset_detail,
+                cascading_effects=cascading_effects,
                 signals=signals,
                 first_seen=datetime.fromisoformat(row["first_seen"]),
                 last_updated=datetime.fromisoformat(row["last_updated"]),
