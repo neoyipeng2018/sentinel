@@ -1,8 +1,12 @@
 """LLM provider setup with OpenAI primary and Cerebras fallback."""
 
+import logging
+
 from langchain_cerebras import ChatCerebras
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
+
+logger = logging.getLogger(__name__)
 
 from config.overrides import get_custom_llm_factory
 from config.settings import settings
@@ -73,6 +77,7 @@ class _LLMWithFallback(BaseChatModel):
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         errors = []
         for factory in self.providers:
+            name = factory.__name__
             try:
                 llm = factory(**self.provider_kwargs)
                 result = llm._generate(
@@ -81,6 +86,9 @@ class _LLMWithFallback(BaseChatModel):
                 self._current = llm
                 return result
             except Exception as e:
-                errors.append(e)
+                logger.warning("LLM provider %s failed: %s", name, e)
+                errors.append((name, e))
                 continue
-        raise errors[-1]
+        # Build a clear error showing all provider failures
+        details = "; ".join(f"{name}: {err}" for name, err in errors)
+        raise RuntimeError(f"All LLM providers failed — {details}")
