@@ -399,12 +399,12 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
                 if nar.cascading_effects
                 else ""
             )
+            + _render_signposts(nar.signposts)
             + (
                 _render_counter_narrative(nar.counter_narrative)
                 if nar.counter_narrative
                 else ""
             )
-            + _render_signposts(nar.signposts)
             + _render_sources(nar.signals)
             + "</div>",
             unsafe_allow_html=True,
@@ -535,12 +535,12 @@ def render_overview(
                 if nar.cascading_effects
                 else ""
             )
+            + _render_signposts(nar.signposts)
             + (
                 _render_counter_narrative(nar.counter_narrative)
                 if nar.counter_narrative
                 else ""
             )
-            + _render_signposts(nar.signposts)
             + _render_sources(nar.signals)
             + "</div>"
             "</div></div>",

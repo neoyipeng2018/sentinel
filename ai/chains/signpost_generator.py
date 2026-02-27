@@ -1,6 +1,7 @@
 """Generate risk signposts (aggravating/mitigating factors) for narratives using LLM."""
 
 import json
+from datetime import date
 
 from langchain_core.language_models import BaseChatModel
 
@@ -26,7 +27,10 @@ def generate_signposts(
     )
 
     chain = SIGNPOST_PROMPT | llm
-    response = chain.invoke({"narratives": narrative_text})
+    response = chain.invoke({
+        "narratives": narrative_text,
+        "today": date.today().isoformat(),
+    })
 
     try:
         raw = response.content
