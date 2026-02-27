@@ -75,19 +75,42 @@ def _render_effect_rows(effects: list, color: str, icon: str) -> str:
     """Render rows for a list of cascading effects with a given color theme."""
     rows = ""
     for eff in sorted(effects, key=lambda e: e.order):
-        order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
+        order_label = (
+            f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
+        )
         assets_html = ""
-        if eff.affected_sub_assets:
+        at_risk = getattr(eff, "sub_assets_at_risk", [])
+        to_benefit = getattr(eff, "sub_assets_to_benefit", [])
+        if at_risk:
             chips = " ".join(
-                f'<span class="cascade-asset">{a}</span>'
-                for a in eff.affected_sub_assets
+                f'<span class="cascade-asset" '
+                f'style="border-color: #ff5252; color: #ff8a80;">'
+                f"{a}</span>"
+                for a in at_risk
             )
-            assets_html = f'<div class="cascade-assets">{chips}</div>'
+            assets_html += (
+                f'<div class="cascade-assets">'
+                f'<span style="color: #ff5252; font-size: 0.6rem; '
+                f'font-weight: 700;">&#9660;</span> {chips}</div>'
+            )
+        if to_benefit:
+            chips = " ".join(
+                f'<span class="cascade-asset" '
+                f'style="border-color: #69f0ae; color: #b9f6ca;">'
+                f"{a}</span>"
+                for a in to_benefit
+            )
+            assets_html += (
+                f'<div class="cascade-assets">'
+                f'<span style="color: #69f0ae; font-size: 0.6rem; '
+                f'font-weight: 700;">&#9650;</span> {chips}</div>'
+            )
         rows += (
             f'<div class="cascade-row">'
             f'<span class="cascade-order" style="background: {color}15; '
             f'color: {color};">{icon} {order_label}</span>'
-            f'<div class="cascade-connector" style="border-color: {color};"></div>'
+            f'<div class="cascade-connector" '
+            f'style="border-color: {color};"></div>'
             f"<div>"
             f'<div class="cascade-effect">{eff.effect}</div>'
             f'<div class="cascade-mechanism">{eff.mechanism}</div>'

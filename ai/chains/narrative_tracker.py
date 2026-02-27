@@ -75,14 +75,20 @@ def update_narrative(
         cascading_effects: list[CascadingEffect] = []
         for eff in raw_effects:
             if isinstance(eff, dict) and "effect" in eff and "mechanism" in eff:
+                old_subs = eff.get("affected_sub_assets", [])
                 cascading_effects.append(
                     CascadingEffect(
                         order=int(eff.get("order", 2)),
                         direction=eff.get("direction", "negative"),
                         effect=eff["effect"],
                         mechanism=eff["mechanism"],
-                        affected_sub_assets=[
-                            str(a) for a in eff.get("affected_sub_assets", [])
+                        sub_assets_at_risk=[
+                            str(a) for a in
+                            eff.get("sub_assets_at_risk", old_subs)
+                        ],
+                        sub_assets_to_benefit=[
+                            str(a) for a in
+                            eff.get("sub_assets_to_benefit", [])
                         ],
                     )
                 )

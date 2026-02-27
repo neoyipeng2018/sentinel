@@ -54,7 +54,8 @@ class CascadingEffect(BaseModel):
     direction: str = "negative"  # "negative" = harmful, "positive" = beneficial
     effect: str  # what happens
     mechanism: str  # why / the causal link
-    affected_sub_assets: list[str] = Field(default_factory=list)  # e.g. ["USD/BRL", "USD/ZAR"]
+    sub_assets_at_risk: list[str] = Field(default_factory=list)
+    sub_assets_to_benefit: list[str] = Field(default_factory=list)
 
 
 class CounterNarrative(BaseModel):
