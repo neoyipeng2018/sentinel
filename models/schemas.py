@@ -57,6 +57,14 @@ class CounterNarrative(BaseModel):
     confidence: float  # 0-1, how strong this counter-argument is
 
 
+class Signpost(BaseModel):
+    """A forward-looking indicator that would aggravate or mitigate a risk."""
+
+    type: str  # "aggravating" or "mitigating"
+    factor: str  # what to watch for
+    detail: str  # why it matters
+
+
 class Narrative(BaseModel):
     """A risk narrative synthesized from multiple signals."""
 
@@ -68,6 +76,7 @@ class Narrative(BaseModel):
     asset_detail: dict[AssetClass, list[str]] = Field(default_factory=dict)
     cascading_effects: list[CascadingEffect] = Field(default_factory=list)
     counter_narrative: CounterNarrative | None = None
+    signposts: list[Signpost] = Field(default_factory=list)
     signals: list[Signal] = Field(default_factory=list)
     first_seen: datetime = Field(default_factory=datetime.utcnow)
     last_updated: datetime = Field(default_factory=datetime.utcnow)

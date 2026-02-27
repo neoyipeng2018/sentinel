@@ -13,6 +13,7 @@ from models.schemas import (
     RiskLevel,
     Signal,
     SignalSource,
+    Signpost,
 )
 
 DB_PATH = Path(__file__).parent.parent / "sentinel.db"
@@ -120,6 +121,15 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: add signposts to narratives for existing DBs
+    try:
+        conn.execute(
+            "ALTER TABLE narratives ADD COLUMN signposts TEXT DEFAULT '[]'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     # Migration: rename fixed_income -> credit in existing data
     conn.execute(
         "UPDATE narratives SET affected_assets = REPLACE(affected_assets, '\"fixed_income\"', '\"credit\"')"
@@ -150,9 +160,9 @@ def save_narrative(narrative: Narrative) -> None:
     conn.execute(
         """INSERT OR REPLACE INTO narratives
         (id, title, summary, risk_level, affected_assets, asset_detail,
-         cascading_effects, counter_narrative,
+         cascading_effects, counter_narrative, signposts,
          first_seen, last_updated, trend, confidence, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
         (
             narrative.id,
             narrative.title,
@@ -164,6 +174,7 @@ def save_narrative(narrative: Narrative) -> None:
             json.dumps(narrative.counter_narrative.model_dump())
             if narrative.counter_narrative
             else "null",
+            json.dumps([s.model_dump() for s in narrative.signposts]),
             narrative.first_seen.isoformat(),
             narrative.last_updated.isoformat(),
             narrative.trend,
@@ -264,6 +275,12 @@ def load_active_narratives() -> list[Narrative]:
             else None
         )
 
+        # Deserialize signposts
+        raw_signposts = row["signposts"] if "signposts" in row.keys() else "[]"
+        signposts = [
+            Signpost(**s) for s in json.loads(raw_signposts or "[]") if isinstance(s, dict)
+        ]
+
         narratives.append(
             Narrative(
                 id=row["id"],
@@ -274,6 +291,7 @@ def load_active_narratives() -> list[Narrative]:
                 asset_detail=asset_detail,
                 cascading_effects=cascading_effects,
                 counter_narrative=counter_narrative,
+                signposts=signposts,
                 signals=signals,
                 first_seen=datetime.fromisoformat(row["first_seen"]),
                 last_updated=datetime.fromisoformat(row["last_updated"]),

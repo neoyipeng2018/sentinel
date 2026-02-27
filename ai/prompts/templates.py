@@ -129,6 +129,40 @@ Return ONLY the JSON array, no other text.""",
     ]
 )
 
+SIGNPOST_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are a financial risk analyst specializing in forward-looking risk indicators.
+For each risk narrative, identify concrete signposts — observable events or data points
+that would signal the risk is either getting worse (aggravating) or getting better (mitigating).
+
+These are "things to watch for" — leading indicators, not current conditions. Be specific:
+name actual data releases, policy decisions, market levels, or corporate actions that an
+analyst should monitor.""",
+        ),
+        (
+            "human",
+            """For each of the following risk narratives, provide 2-3 aggravating signposts
+(things that would make the risk worse) and 2-3 mitigating signposts (things that would
+reduce the risk):
+
+{narratives}
+
+Return a JSON array with one object per narrative, in the same order:
+[{{
+    "narrative_title": "title of the narrative",
+    "signposts": [
+        {{"type": "aggravating", "factor": "what to watch for", "detail": "why it matters"}},
+        {{"type": "mitigating", "factor": "what to watch for", "detail": "why it matters"}}
+    ]
+}}]
+
+Return ONLY the JSON array, no other text.""",
+        ),
+    ]
+)
+
 NARRATIVE_UPDATE_PROMPT = ChatPromptTemplate.from_messages(
     [
         (

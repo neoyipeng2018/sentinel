@@ -10,6 +10,7 @@ import threading
 from ai.chains.counter_narrative import generate_counter_narratives
 from ai.chains.narrative_extractor import extract_narratives
 from ai.chains.risk_assessor import compute_asset_risk_scores
+from ai.chains.signpost_generator import generate_signposts
 from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.llm import get_llm
 from config.overrides import get_custom_signals
@@ -65,6 +66,12 @@ def run_refresh_cycle(prefer_free: bool = True) -> int:
         generate_counter_narratives(narratives, llm)
     except Exception:
         logger.exception("Counter-narrative generation failed — continuing without")
+
+    # Generate risk signposts before saving
+    try:
+        generate_signposts(narratives, llm)
+    except Exception:
+        logger.exception("Signpost generation failed — continuing without")
 
     old_narratives = load_active_narratives()
     clear_narratives()

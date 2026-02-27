@@ -8,7 +8,7 @@ import streamlit as st
 
 from ai.chains.risk_assessor import compute_asset_risk_scores, get_top_risks
 from ai.chains.trend_analyzer import classify_emerging_risk
-from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel
+from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel, Signpost
 from storage.narrative_store import get_risk_score_history
 
 RISK_COLORS = {
@@ -94,6 +94,46 @@ def _render_cascading_effects(effects: list) -> str:
     return (
         f'<div class="cascade-chain">'
         f'<div class="cascade-header">CASCADING EFFECTS</div>'
+        f"{rows}"
+        f"</div>"
+    )
+
+
+def _render_signposts(signposts: list[Signpost]) -> str:
+    """Render risk signposts grouped by aggravating / mitigating."""
+    if not signposts:
+        return ""
+
+    aggravating = [s for s in signposts if s.type == "aggravating"]
+    mitigating = [s for s in signposts if s.type == "mitigating"]
+
+    rows = ""
+    for sp in aggravating:
+        rows += (
+            f'<div class="cascade-row">'
+            f'<span class="cascade-order" style="background: rgba(255,23,68,0.15); '
+            f'color: #ff5252;">&#9650;</span>'
+            f'<div class="cascade-connector" style="border-color: #ff5252;"></div>'
+            f"<div>"
+            f'<div class="cascade-effect" style="color: #ff8a80;">{sp.factor}</div>'
+            f'<div class="cascade-mechanism">{sp.detail}</div>'
+            f"</div></div>"
+        )
+    for sp in mitigating:
+        rows += (
+            f'<div class="cascade-row">'
+            f'<span class="cascade-order" style="background: rgba(0,230,118,0.15); '
+            f'color: #69f0ae;">&#9660;</span>'
+            f'<div class="cascade-connector" style="border-color: #69f0ae;"></div>'
+            f"<div>"
+            f'<div class="cascade-effect" style="color: #b9f6ca;">{sp.factor}</div>'
+            f'<div class="cascade-mechanism">{sp.detail}</div>'
+            f"</div></div>"
+        )
+
+    return (
+        f'<div class="cascade-chain" style="border-left-color: #546e7a;">'
+        f'<div class="cascade-header" style="color: #78909c;">SIGNPOSTS</div>'
         f"{rows}"
         f"</div>"
     )
@@ -311,6 +351,7 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
                 if nar.counter_narrative
                 else ""
             )
+            + _render_signposts(nar.signposts)
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -445,6 +486,7 @@ def render_overview(
                 if nar.counter_narrative
                 else ""
             )
+            + _render_signposts(nar.signposts)
             + "</div>"
             "</div></div>",
             unsafe_allow_html=True,
