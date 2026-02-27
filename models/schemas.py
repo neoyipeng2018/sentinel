@@ -40,10 +40,18 @@ class Signal(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
 
+class AssetImpact(BaseModel):
+    """A specific sub-asset with an explanation of how it's affected."""
+
+    asset: str  # e.g. "US Technology", "USD/JPY"
+    explanation: str  # e.g. "Higher rates compress tech valuations"
+
+
 class CascadingEffect(BaseModel):
     """A second or third order effect stemming from a risk narrative."""
 
     order: int  # 2 = second order, 3 = third order
+    direction: str = "negative"  # "negative" = harmful, "positive" = beneficial
     effect: str  # what happens
     mechanism: str  # why / the causal link
     affected_sub_assets: list[str] = Field(default_factory=list)  # e.g. ["USD/BRL", "USD/ZAR"]
@@ -73,7 +81,8 @@ class Narrative(BaseModel):
     summary: str
     risk_level: RiskLevel
     affected_assets: list[AssetClass]
-    asset_detail: dict[AssetClass, list[str]] = Field(default_factory=dict)
+    assets_at_risk: dict[AssetClass, list[AssetImpact]] = Field(default_factory=dict)
+    assets_to_benefit: dict[AssetClass, list[AssetImpact]] = Field(default_factory=dict)
     cascading_effects: list[CascadingEffect] = Field(default_factory=list)
     counter_narrative: CounterNarrative | None = None
     signposts: list[Signpost] = Field(default_factory=list)

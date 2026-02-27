@@ -8,7 +8,15 @@ import streamlit as st
 
 from ai.chains.risk_assessor import compute_asset_risk_scores, get_top_risks
 from ai.chains.trend_analyzer import classify_emerging_risk
-from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel, Signal, Signpost
+from models.schemas import (
+    AssetClass,
+    AssetImpact,
+    CounterNarrative,
+    Narrative,
+    RiskLevel,
+    Signal,
+    Signpost,
+)
 from storage.narrative_store import get_risk_score_history
 
 RISK_COLORS = {
@@ -63,14 +71,10 @@ def _svg_gauge(score: float, max_score: float, color: str, size: int = 80) -> st
 </svg>"""
 
 
-def _render_cascading_effects(effects: list) -> str:
-    """Render the causal chain of second/third order effects."""
-    if not effects:
-        return ""
-
-    sorted_effects = sorted(effects, key=lambda e: e.order)
+def _render_effect_rows(effects: list, color: str, icon: str) -> str:
+    """Render rows for a list of cascading effects with a given color theme."""
     rows = ""
-    for eff in sorted_effects:
+    for eff in sorted(effects, key=lambda e: e.order):
         order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
         assets_html = ""
         if eff.affected_sub_assets:
@@ -81,8 +85,9 @@ def _render_cascading_effects(effects: list) -> str:
             assets_html = f'<div class="cascade-assets">{chips}</div>'
         rows += (
             f'<div class="cascade-row">'
-            f'<span class="cascade-order">{order_label}</span>'
-            f'<div class="cascade-connector"></div>'
+            f'<span class="cascade-order" style="background: {color}15; '
+            f'color: {color};">{icon} {order_label}</span>'
+            f'<div class="cascade-connector" style="border-color: {color};"></div>'
             f"<div>"
             f'<div class="cascade-effect">{eff.effect}</div>'
             f'<div class="cascade-mechanism">{eff.mechanism}</div>'
@@ -90,13 +95,35 @@ def _render_cascading_effects(effects: list) -> str:
             f"</div>"
             f"</div>"
         )
+    return rows
 
-    return (
-        f'<div class="cascade-chain">'
-        f'<div class="cascade-header">CASCADING EFFECTS</div>'
-        f"{rows}"
-        f"</div>"
-    )
+
+def _render_cascading_effects(effects: list) -> str:
+    """Render cascading effects split into negative and positive sections."""
+    if not effects:
+        return ""
+
+    negative = [e for e in effects if getattr(e, "direction", "negative") != "positive"]
+    positive = [e for e in effects if getattr(e, "direction", None) == "positive"]
+
+    html = ""
+    if negative:
+        rows = _render_effect_rows(negative, "#ff5252", "&#9660;")
+        html += (
+            f'<div class="cascade-chain" style="border-left-color: #ff5252;">'
+            f'<div class="cascade-header" style="color: #ff8a80;">'
+            f"CASCADING EFFECTS &mdash; NEGATIVE</div>"
+            f"{rows}</div>"
+        )
+    if positive:
+        rows = _render_effect_rows(positive, "#69f0ae", "&#9650;")
+        html += (
+            f'<div class="cascade-chain" style="border-left-color: #69f0ae;">'
+            f'<div class="cascade-header" style="color: #b9f6ca;">'
+            f"CASCADING EFFECTS &mdash; POSITIVE</div>"
+            f"{rows}</div>"
+        )
+    return html
 
 
 def _render_signposts(signposts: list[Signpost]) -> str:
@@ -140,19 +167,23 @@ def _render_signposts(signposts: list[Signpost]) -> str:
 
 
 def _render_counter_narrative(counter: CounterNarrative) -> str:
-    """Render a counter-narrative (blindspot) section."""
+    """Render a collapsible counter-narrative (blindspot) section."""
     conf_pct = f"{counter.confidence:.0%}"
     return (
-        '<div class="cascade-chain" style="border-left-color: #4a6fa5;">'
-        '<div class="cascade-header" style="color: #4a6fa5;">'
-        "COUNTER-NARRATIVE</div>"
+        f'<details style="margin-top: 6px;">'
+        f'<summary style="color: #4a6fa5; font-size: 0.7rem; font-weight: 700; '
+        f'letter-spacing: 0.1em; cursor: pointer; list-style: none; '
+        f'user-select: none;">'
+        f"&#9656; COUNTER-NARRATIVE</summary>"
+        f'<div class="cascade-chain" style="border-left-color: #4a6fa5; '
+        f'margin-top: 4px;">'
         f'<div style="color: #b0bec5; font-size: 0.8rem; line-height: 1.5; '
         f'margin-bottom: 4px;">{counter.counter_argument}</div>'
         f'<div style="color: #607d8b; font-size: 0.75rem; line-height: 1.4; '
         f'margin-bottom: 4px;"><strong>Basis:</strong> {counter.basis}</div>'
         f'<div style="color: #546e7a; font-size: 0.7rem;">'
         f"Confidence: {conf_pct}</div>"
-        "</div>"
+        f"</div></details>"
     )
 
 
@@ -207,6 +238,45 @@ def _render_sources(signals: list[Signal]) -> str:
         f"</div>"
         f"</details>"
     )
+
+
+def _render_asset_impacts(
+    at_risk: dict[AssetClass, list[AssetImpact]],
+    to_benefit: dict[AssetClass, list[AssetImpact]],
+) -> str:
+    """Render assets split into 'at risk' and 'to benefit' sections."""
+    html = ""
+    if at_risk:
+        chips = ""
+        for ac, imps in at_risk.items():
+            label = ASSET_LABELS.get(ac, ac.value)
+            for imp in imps:
+                title_attr = f' title="{imp.explanation}"' if imp.explanation else ""
+                chips += (
+                    f'<span class="cascade-asset" style="border-color: #ff5252;'
+                    f' color: #ff8a80;"{title_attr}>{label}: {imp.asset}</span> '
+                )
+        html += (
+            f'<div style="margin-top: 4px;">'
+            f'<span style="color: #ff5252; font-size: 0.7rem; font-weight: 700; '
+            f'letter-spacing: 0.05em;">&#9660; AT RISK</span> {chips}</div>'
+        )
+    if to_benefit:
+        chips = ""
+        for ac, imps in to_benefit.items():
+            label = ASSET_LABELS.get(ac, ac.value)
+            for imp in imps:
+                title_attr = f' title="{imp.explanation}"' if imp.explanation else ""
+                chips += (
+                    f'<span class="cascade-asset" style="border-color: #69f0ae;'
+                    f' color: #b9f6ca;"{title_attr}>{label}: {imp.asset}</span> '
+                )
+        html += (
+            f'<div style="margin-top: 4px;">'
+            f'<span style="color: #69f0ae; font-size: 0.7rem; font-weight: 700; '
+            f'letter-spacing: 0.05em;">&#9650; BENEFIT</span> {chips}</div>'
+        )
+    return html
 
 
 LOOKBACK_OPTIONS = {
@@ -365,16 +435,6 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
             hours = age_delta.seconds // 3600
             age_str = f"{hours}h ago" if hours > 0 else "just now"
 
-        # Build sub-asset detail string
-        asset_parts = []
-        for a in nar.affected_assets:
-            label = ASSET_LABELS.get(a, a.value)
-            subs = nar.asset_detail.get(a)
-            if subs:
-                label += f" ({', '.join(subs)})"
-            asset_parts.append(label)
-        assets_str = ", ".join(asset_parts) if asset_parts else "—"
-
         st.markdown(
             f'<div class="cmd-panel" style="border-left: 3px dashed {color}; '
             f'background: rgba(255,255,255,0.02);">'
@@ -388,8 +448,8 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
             f"</div>"
             f'<div style="color: #8892a4; font-size: 0.8rem; line-height: 1.5; '
             f'margin-bottom: 6px;">{nar.summary}</div>'
-            f'<div class="text-muted">'
-            f"Assets: {assets_str} &middot; "
+            + _render_asset_impacts(nar.assets_at_risk, nar.assets_to_benefit)
+            + f'<div class="text-muted">'
             f"First seen: {age_str} &middot; "
             f"Signals: {len(nar.signals)} &middot; "
             f"Trend: {nar.trend}"
@@ -492,16 +552,20 @@ def render_overview(
     for nar in top:
         color = RISK_COLORS[nar.risk_level]
         level = nar.risk_level.value
-        asset_parts = []
-        for a in nar.affected_assets:
-            if asset_filter and a not in asset_filter:
-                continue
-            label = ASSET_LABELS.get(a, a.value)
-            subs = nar.asset_detail.get(a)
-            if subs:
-                label += f" ({', '.join(subs)})"
-            asset_parts.append(label)
-        assets_str = ", ".join(asset_parts) if asset_parts else "—"
+
+        # Filter asset impacts to selected asset classes
+        if asset_filter:
+            filtered_risk = {
+                a: imps for a, imps in nar.assets_at_risk.items()
+                if a in asset_filter
+            }
+            filtered_benefit = {
+                a: imps for a, imps in nar.assets_to_benefit.items()
+                if a in asset_filter
+            }
+        else:
+            filtered_risk = nar.assets_at_risk
+            filtered_benefit = nar.assets_to_benefit
 
         trend_arrow, trend_cls = TREND_DISPLAY.get(
             nar.trend, ("&#9654;", "trend-stable")
@@ -523,8 +587,8 @@ def render_overview(
             f"</div>"
             f'<div style="color: #8892a4; font-size: 0.8rem; line-height: 1.5; '
             f'margin-bottom: 6px;">{nar.summary}</div>'
-            f'<div class="text-muted">'
-            f"Assets: {assets_str} &middot; "
+            + _render_asset_impacts(filtered_risk, filtered_benefit)
+            + f'<div class="text-muted">'
             f'<span class="{trend_cls}">{trend_arrow} {nar.trend}</span> &middot; '
             f"Conf: {nar.confidence:.0%} &middot; "
             f"Signals: {len(nar.signals)} &middot; "

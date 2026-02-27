@@ -88,14 +88,21 @@ def render_overview(narratives: list[Narrative]) -> str:
     rows = []
     for nar in top:
         color = RISK_COLORS[nar.risk_level]
-        asset_parts = []
-        for a in nar.affected_assets:
+        # Build hurt / benefit asset strings
+        risk_parts = []
+        for a, imps in nar.assets_at_risk.items():
             label = ASSET_LABELS.get(a, a.value)
-            subs = nar.asset_detail.get(a)
-            if subs:
-                label += f" ({', '.join(_esc(s) for s in subs)})"
-            asset_parts.append(label)
-        assets_str = ", ".join(asset_parts)
+            subs = ", ".join(f"{_esc(i.asset)}" for i in imps)
+            risk_parts.append(f"{label} ({subs})")
+        risk_str = ", ".join(risk_parts) if risk_parts else "—"
+
+        benefit_parts = []
+        for a, imps in nar.assets_to_benefit.items():
+            label = ASSET_LABELS.get(a, a.value)
+            subs = ", ".join(f"{_esc(i.asset)}" for i in imps)
+            benefit_parts.append(f"{label} ({subs})")
+        benefit_str = ", ".join(benefit_parts) if benefit_parts else "—"
+
         arrow = _trend_arrow(nar.trend)
         rows.append(
             f"<details>"
@@ -104,7 +111,8 @@ def render_overview(narratives: list[Narrative]) -> str:
             f"{_esc(nar.title)}</summary>"
             f'<div class="narrative-detail">'
             f"<p>{_esc(nar.summary)}</p>"
-            f"<p><strong>Assets:</strong> {_esc(assets_str)}</p>"
+            f"<p><strong>Assets at risk:</strong> {risk_str}</p>"
+            f"<p><strong>Assets to benefit:</strong> {benefit_str}</p>"
             f"<p><strong>Trend:</strong> {arrow} {_esc(nar.trend)} &middot; "
             f"<strong>Confidence:</strong> {nar.confidence:.0%} &middot; "
             f"<strong>Signals:</strong> {len(nar.signals)} &middot; "

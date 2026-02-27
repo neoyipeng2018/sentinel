@@ -30,79 +30,16 @@ TREND_DISPLAY = {
 
 
 def _render_cascading_effects(effects: list) -> str:
-    """Render the causal chain of second/third order effects."""
-    if not effects:
-        return ""
-
-    sorted_effects = sorted(effects, key=lambda e: e.order)
-    rows = ""
-    for eff in sorted_effects:
-        order_label = f"{eff.order}nd" if eff.order == 2 else f"{eff.order}rd"
-        assets_html = ""
-        if eff.affected_sub_assets:
-            chips = " ".join(
-                f'<span class="cascade-asset">{a}</span>'
-                for a in eff.affected_sub_assets
-            )
-            assets_html = f'<div class="cascade-assets">{chips}</div>'
-        rows += (
-            f'<div class="cascade-row">'
-            f'<span class="cascade-order">{order_label}</span>'
-            f'<div class="cascade-connector"></div>'
-            f"<div>"
-            f'<div class="cascade-effect">{eff.effect}</div>'
-            f'<div class="cascade-mechanism">{eff.mechanism}</div>'
-            f"{assets_html}"
-            f"</div>"
-            f"</div>"
-        )
-
-    return (
-        f'<div class="cascade-chain">'
-        f'<div class="cascade-header">CASCADING EFFECTS</div>'
-        f"{rows}"
-        f"</div>"
-    )
+    """Render cascading effects split into negative and positive sections."""
+    # Import shared rendering from overview to avoid duplication
+    from dashboard.overview import _render_cascading_effects as _render
+    return _render(effects)
 
 
 def _render_signposts(signposts: list[Signpost]) -> str:
     """Render risk signposts grouped by aggravating / mitigating."""
-    if not signposts:
-        return ""
-
-    aggravating = [s for s in signposts if s.type == "aggravating"]
-    mitigating = [s for s in signposts if s.type == "mitigating"]
-
-    rows = ""
-    for sp in aggravating:
-        rows += (
-            f'<div class="cascade-row">'
-            f'<span class="cascade-order" style="background: rgba(255,23,68,0.15); '
-            f'color: #ff5252;">&#9650;</span>'
-            f'<div class="cascade-connector" style="border-color: #ff5252;"></div>'
-            f"<div>"
-            f'<div class="cascade-effect" style="color: #ff8a80;">{sp.factor}</div>'
-            f'<div class="cascade-mechanism">{sp.detail}</div>'
-            f"</div></div>"
-        )
-    for sp in mitigating:
-        rows += (
-            f'<div class="cascade-row">'
-            f'<span class="cascade-order" style="background: rgba(0,230,118,0.15); '
-            f'color: #69f0ae;">&#9660;</span>'
-            f'<div class="cascade-connector" style="border-color: #69f0ae;"></div>'
-            f"<div>"
-            f'<div class="cascade-effect" style="color: #b9f6ca;">{sp.factor}</div>'
-            f'<div class="cascade-mechanism">{sp.detail}</div>'
-            f"</div></div>"
-        )
-
-    return (
-        f'<div class="cascade-chain" style="border-left-color: #546e7a;">'
-        f'<div class="cascade-header" style="color: #78909c;">SIGNPOSTS</div>'
-        f"{rows}"
-        f"</div>"
-    )
+    from dashboard.overview import _render_signposts as _render
+    return _render(signposts)
 
 
 def render_timeline(narratives: list[Narrative]) -> None:

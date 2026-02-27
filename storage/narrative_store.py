@@ -7,6 +7,7 @@ from pathlib import Path
 
 from models.schemas import (
     AssetClass,
+    AssetImpact,
     CascadingEffect,
     CounterNarrative,
     Narrative,
@@ -130,6 +131,16 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: add assets_at_risk / assets_to_benefit columns
+    for col, default in [("assets_at_risk", "'{}'"), ("assets_to_benefit", "'{}'")]:
+        try:
+            conn.execute(
+                f"ALTER TABLE narratives ADD COLUMN {col} TEXT DEFAULT {default}"
+            )
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
     # Migration: rename fixed_income -> credit in existing data
     conn.execute(
         "UPDATE narratives SET affected_assets = REPLACE(affected_assets, '\"fixed_income\"', '\"credit\"')"
@@ -157,19 +168,27 @@ def save_narrative(narrative: Narrative) -> None:
     """Save or update a narrative and its associated signals."""
     conn = _get_conn()
 
+    def _serialize_impacts(d: dict[AssetClass, list[AssetImpact]]) -> str:
+        return json.dumps(
+            {a.value: [i.model_dump() for i in imps] for a, imps in d.items()}
+        )
+
     conn.execute(
         """INSERT OR REPLACE INTO narratives
         (id, title, summary, risk_level, affected_assets, asset_detail,
+         assets_at_risk, assets_to_benefit,
          cascading_effects, counter_narrative, signposts,
          first_seen, last_updated, trend, confidence, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
         (
             narrative.id,
             narrative.title,
             narrative.summary,
             narrative.risk_level.value,
             json.dumps([a.value for a in narrative.affected_assets]),
-            json.dumps({a.value: subs for a, subs in narrative.asset_detail.items()}),
+            "{}",  # legacy asset_detail — no longer used
+            _serialize_impacts(narrative.assets_at_risk),
+            _serialize_impacts(narrative.assets_to_benefit),
             json.dumps([e.model_dump() for e in narrative.cascading_effects]),
             json.dumps(narrative.counter_narrative.model_dump())
             if narrative.counter_narrative
@@ -251,14 +270,50 @@ def load_active_narratives() -> list[Narrative]:
             for sr in signal_rows
         ]
 
-        # Deserialize asset_detail: JSON string -> dict[AssetClass, list[str]]
-        raw_detail = json.loads(row["asset_detail"]) if row["asset_detail"] else {}
-        asset_detail: dict[AssetClass, list[str]] = {}
-        for key, subs in raw_detail.items():
-            try:
-                asset_detail[AssetClass(key)] = subs
-            except ValueError:
-                continue
+        # Deserialize assets_at_risk / assets_to_benefit
+        def _load_impacts(col_name: str) -> dict[AssetClass, list[AssetImpact]]:
+            raw_json = row[col_name] if col_name in row.keys() else "{}"
+            raw = json.loads(raw_json) if raw_json else {}
+            result: dict[AssetClass, list[AssetImpact]] = {}
+            if not isinstance(raw, dict):
+                return result
+            for key, items in raw.items():
+                try:
+                    ac = AssetClass(key)
+                except ValueError:
+                    continue
+                if isinstance(items, list):
+                    impacts = []
+                    for item in items:
+                        if isinstance(item, dict) and "asset" in item:
+                            impacts.append(
+                                AssetImpact(
+                                    asset=item["asset"],
+                                    explanation=item.get("explanation", ""),
+                                )
+                            )
+                        elif isinstance(item, str):
+                            impacts.append(AssetImpact(asset=item, explanation=""))
+                    if impacts:
+                        result[ac] = impacts
+            return result
+
+        assets_at_risk = _load_impacts("assets_at_risk")
+        assets_to_benefit = _load_impacts("assets_to_benefit")
+
+        # Backward compat: migrate legacy asset_detail into assets_at_risk
+        if not assets_at_risk and not assets_to_benefit:
+            raw_detail = json.loads(row["asset_detail"]) if row["asset_detail"] else {}
+            if isinstance(raw_detail, dict):
+                for key, subs in raw_detail.items():
+                    try:
+                        ac = AssetClass(key)
+                    except ValueError:
+                        continue
+                    if isinstance(subs, list):
+                        assets_at_risk[ac] = [
+                            AssetImpact(asset=s, explanation="") for s in subs
+                        ]
 
         # Deserialize cascading_effects
         raw_effects = json.loads(row["cascading_effects"]) if row["cascading_effects"] else []
@@ -288,7 +343,8 @@ def load_active_narratives() -> list[Narrative]:
                 summary=row["summary"],
                 risk_level=RiskLevel(row["risk_level"]),
                 affected_assets=[AssetClass(a) for a in json.loads(row["affected_assets"])],
-                asset_detail=asset_detail,
+                assets_at_risk=assets_at_risk,
+                assets_to_benefit=assets_to_benefit,
                 cascading_effects=cascading_effects,
                 counter_narrative=counter_narrative,
                 signposts=signposts,

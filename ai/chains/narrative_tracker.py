@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseChatModel
 
 from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.prompts.templates import NARRATIVE_UPDATE_PROMPT
-from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal
+from models.schemas import AssetClass, AssetImpact, CascadingEffect, Narrative, RiskLevel, Signal
 
 
 def update_narrative(
@@ -21,6 +21,11 @@ def update_narrative(
         f"[{s.id}] ({s.source.value}) {s.title}\n{s.content[:300]}" for s in new_signals
     )
 
+    def _serialize_impacts(d: dict[AssetClass, list[AssetImpact]]) -> str:
+        return json.dumps(
+            {a.value: [i.model_dump() for i in imps] for a, imps in d.items()}
+        )
+
     chain = NARRATIVE_UPDATE_PROMPT | llm
     response = chain.invoke(
         {
@@ -29,9 +34,8 @@ def update_narrative(
             "risk_level": narrative.risk_level.value,
             "trend": narrative.trend,
             "affected_assets": ", ".join(a.value for a in narrative.affected_assets),
-            "asset_detail": json.dumps(
-                {a.value: subs for a, subs in narrative.asset_detail.items()}
-            ),
+            "assets_at_risk": _serialize_impacts(narrative.assets_at_risk),
+            "assets_to_benefit": _serialize_impacts(narrative.assets_to_benefit),
             "cascading_effects": json.dumps(
                 [e.model_dump() for e in narrative.cascading_effects]
             ),
@@ -54,18 +58,16 @@ def update_narrative(
     narrative.trend = update.get("trend", narrative.trend)
     narrative.confidence = update.get("confidence", narrative.confidence)
 
-    # Parse updated asset_detail from LLM response
-    raw_detail = update.get("asset_detail", {})
-    if isinstance(raw_detail, dict) and raw_detail:
-        asset_detail: dict[AssetClass, list[str]] = {}
-        for key, subs in raw_detail.items():
-            try:
-                ac = AssetClass(key)
-            except ValueError:
-                continue
-            if isinstance(subs, list):
-                asset_detail[ac] = [str(s) for s in subs]
-        narrative.asset_detail = asset_detail
+    # Parse updated assets_at_risk / assets_to_benefit
+    from ai.chains.narrative_extractor import _parse_asset_impacts
+
+    raw_at_risk = update.get("assets_at_risk", {})
+    if isinstance(raw_at_risk, dict) and raw_at_risk:
+        narrative.assets_at_risk = _parse_asset_impacts(raw_at_risk)
+
+    raw_to_benefit = update.get("assets_to_benefit", {})
+    if isinstance(raw_to_benefit, dict) and raw_to_benefit:
+        narrative.assets_to_benefit = _parse_asset_impacts(raw_to_benefit)
 
     # Parse updated cascading effects
     raw_effects = update.get("cascading_effects", [])
@@ -76,6 +78,7 @@ def update_narrative(
                 cascading_effects.append(
                     CascadingEffect(
                         order=int(eff.get("order", 2)),
+                        direction=eff.get("direction", "negative"),
                         effect=eff["effect"],
                         mechanism=eff["mechanism"],
                         affected_sub_assets=[

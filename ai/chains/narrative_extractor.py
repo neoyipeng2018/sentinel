@@ -7,7 +7,35 @@ from datetime import datetime
 from langchain_core.language_models import BaseChatModel
 
 from ai.prompts.templates import NARRATIVE_EXTRACTION_PROMPT
-from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal
+from models.schemas import AssetClass, AssetImpact, CascadingEffect, Narrative, RiskLevel, Signal
+
+
+def _parse_asset_impacts(raw: dict) -> dict[AssetClass, list[AssetImpact]]:
+    """Parse an assets_at_risk or assets_to_benefit dict from LLM JSON."""
+    result: dict[AssetClass, list[AssetImpact]] = {}
+    if not isinstance(raw, dict):
+        return result
+    for key, items in raw.items():
+        try:
+            ac = AssetClass(key)
+        except ValueError:
+            continue
+        if isinstance(items, list):
+            impacts = []
+            for item in items:
+                if isinstance(item, dict) and "asset" in item:
+                    impacts.append(
+                        AssetImpact(
+                            asset=str(item["asset"]),
+                            explanation=str(item.get("explanation", "")),
+                        )
+                    )
+                elif isinstance(item, str):
+                    # Backward compat: plain string list
+                    impacts.append(AssetImpact(asset=item, explanation=""))
+            if impacts:
+                result[ac] = impacts
+    return result
 
 
 def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrative]:
@@ -45,17 +73,9 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                 for sid in item.get("signal_ids", [])
                 if sid in signal_map
             ]
-            # Parse asset_detail: convert string keys to AssetClass enums
-            raw_detail = item.get("asset_detail", {})
-            asset_detail: dict[AssetClass, list[str]] = {}
-            if isinstance(raw_detail, dict):
-                for key, subs in raw_detail.items():
-                    try:
-                        ac = AssetClass(key)
-                    except ValueError:
-                        continue
-                    if isinstance(subs, list):
-                        asset_detail[ac] = [str(s) for s in subs]
+            # Parse assets_at_risk and assets_to_benefit
+            assets_at_risk = _parse_asset_impacts(item.get("assets_at_risk", {}))
+            assets_to_benefit = _parse_asset_impacts(item.get("assets_to_benefit", {}))
 
             # Parse cascading effects
             raw_effects = item.get("cascading_effects", [])
@@ -65,6 +85,7 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                     cascading_effects.append(
                         CascadingEffect(
                             order=int(eff.get("order", 2)),
+                            direction=eff.get("direction", "negative"),
                             effect=eff["effect"],
                             mechanism=eff["mechanism"],
                             affected_sub_assets=[
@@ -79,7 +100,8 @@ def extract_narratives(signals: list[Signal], llm: BaseChatModel) -> list[Narrat
                 summary=item["summary"],
                 risk_level=RiskLevel(item["risk_level"]),
                 affected_assets=[AssetClass(a) for a in item.get("affected_assets", [])],
-                asset_detail=asset_detail,
+                assets_at_risk=assets_at_risk,
+                assets_to_benefit=assets_to_benefit,
                 cascading_effects=cascading_effects,
                 signals=matched_signals,
                 first_seen=datetime.utcnow(),

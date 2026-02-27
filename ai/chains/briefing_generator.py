@@ -14,14 +14,22 @@ def generate_briefing(narratives: list[Narrative], llm: BaseChatModel) -> RiskBr
     top = get_top_risks(narratives, n=10)
 
     def _format_assets(n: Narrative) -> str:
-        parts = []
-        for a in n.affected_assets:
-            label = a.value
-            subs = n.asset_detail.get(a)
-            if subs:
-                label += f" ({', '.join(subs)})"
-            parts.append(label)
-        return ", ".join(parts)
+        risk_parts = []
+        for a, imps in n.assets_at_risk.items():
+            subs = ", ".join(i.asset for i in imps)
+            risk_parts.append(f"{a.value} ({subs})")
+        benefit_parts = []
+        for a, imps in n.assets_to_benefit.items():
+            subs = ", ".join(i.asset for i in imps)
+            benefit_parts.append(f"{a.value} ({subs})")
+        result = ""
+        if risk_parts:
+            result += "At risk: " + ", ".join(risk_parts)
+        if benefit_parts:
+            if result:
+                result += " | "
+            result += "Benefit: " + ", ".join(benefit_parts)
+        return result or ", ".join(a.value for a in n.affected_assets)
 
     narrative_text = "\n\n".join(
         f"**{n.title}** (Risk: {n.risk_level.value}, Trend: {n.trend})\n"

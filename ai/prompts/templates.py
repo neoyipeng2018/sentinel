@@ -26,8 +26,9 @@ Rules:
     Use for risks driven by central bank policy, inflation, fiscal deficits, or duration.
 - Assess trend: intensifying, stable, or fading
 - Provide a confidence score (0-1) based on signal strength and corroboration
-- For each affected asset class, list specific sub-assets in an "asset_detail" object keyed
-  by asset class. Qualify with country/region where relevant:
+- Separate affected assets into TWO categories — "assets_at_risk" (would be hurt by this
+  narrative) and "assets_to_benefit" (would benefit). For each sub-asset, provide a brief
+  explanation of WHY it is hurt or benefits. Use the same naming conventions:
   - equities: region + sector or index, e.g. "US Technology", "Japan Financials", "EU Autos", "Nikkei 225"
   - credit: issuer type + region + quality, e.g. "US IG Credit", "EU HY Credit", "US Leveraged Loans", "EM Corporate Debt", "US CLOs"
   - rates: sovereign issuer + tenor, e.g. "US 10Y Treasuries", "US 2Y/10Y Spread", "Japan 30Y JGBs", "EU Sovereign Debt", "EM Sovereign Debt"
@@ -36,15 +37,18 @@ Rules:
   - real_estate: region + segment, e.g. "US Commercial", "China Residential", "EU Office"
   - private_markets: region + category, e.g. "US Venture Capital", "EU Private Credit", "Asia PE"
 - For each narrative, identify 2-3 cascading (second and third order) effects. These are the
-  downstream consequences that are NOT obvious from the headline risk. For each effect provide:
+  downstream consequences that are NOT obvious from the headline risk. Separate them into
+  NEGATIVE effects (harmful) and POSITIVE effects (beneficial). For each effect provide:
   - "order": 2 or 3 (second-order = direct knock-on, third-order = further downstream)
+  - "direction": "negative" or "positive"
   - "effect": what happens (concise, one sentence)
   - "mechanism": why this follows from the primary risk (the causal link, one sentence)
   - "affected_sub_assets": specific instruments/sub-assets impacted by THIS effect (same
-    naming convention as asset_detail — qualify with region/sector/tenor)
+    naming convention — qualify with region/sector/tenor)
   Example for "Japan carry trade unwinding":
-  - order 2: "EM currencies sell off" / "Leveraged carry positions funded in JPY unwind, forcing liquidation of EM assets" / ["USD/BRL", "USD/ZAR", "USD/MXN"]
-  - order 3: "EM central banks forced into emergency rate hikes" / "Currency defense depletes reserves and tightens domestic liquidity" / ["Brazil Selic Rate", "South Africa Repo Rate", "EM Sovereign Debt"] """,
+  - order 2, negative: "EM currencies sell off" / "Leveraged carry positions funded in JPY unwind, forcing liquidation of EM assets" / ["USD/BRL", "USD/ZAR", "USD/MXN"]
+  - order 3, negative: "EM central banks forced into emergency rate hikes" / "Currency defense depletes reserves and tightens domestic liquidity" / ["Brazil Selic Rate", "South Africa Repo Rate", "EM Sovereign Debt"]
+  - order 2, positive: "Japanese exporters lose competitiveness" / "Stronger yen benefits domestic consumers and import-reliant sectors" / ["Japan Consumer Staples", "Japan Retail"] """,
         ),
         (
             "human",
@@ -58,10 +62,12 @@ Return your analysis as a JSON array of narratives with this structure:
     "summary": "2-3 sentence summary of the risk narrative",
     "risk_level": "critical|high|medium|low",
     "affected_assets": ["equities", "credit", "rates", ...],
-    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "rates": ["US 10Y Treasuries"], "credit": ["US IG Credit"]}},
+    "assets_at_risk": {{"equities": [{{"asset": "US Technology", "explanation": "Higher rates compress tech valuations"}}, {{"asset": "Japan Financials", "explanation": "Yen strength hits export earnings"}}], "fx": [{{"asset": "USD/JPY", "explanation": "Carry trade unwind drives sharp yen appreciation"}}]}},
+    "assets_to_benefit": {{"commodities": [{{"asset": "Gold", "explanation": "Safe-haven demand rises on risk-off sentiment"}}], "rates": [{{"asset": "US 10Y Treasuries", "explanation": "Flight to quality compresses yields"}}]}},
     "cascading_effects": [
-        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
-        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}
+        {{"order": 2, "direction": "negative", "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
+        {{"order": 3, "direction": "negative", "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}},
+        {{"order": 2, "direction": "positive", "effect": "beneficial knock-on", "mechanism": "why this helps", "affected_sub_assets": ["Gold", "US Treasuries"]}}
     ],
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
@@ -177,23 +183,27 @@ Previous summary: {summary}
 Previous risk level: {risk_level}
 Previous trend: {trend}
 Affected assets: {affected_assets}
-Sub-asset detail: {asset_detail}
+Assets at risk: {assets_at_risk}
+Assets to benefit: {assets_to_benefit}
 Previous cascading effects: {cascading_effects}
 
 New signals related to this narrative:
 {new_signals}
 
 Provide an updated assessment as JSON. Re-evaluate cascading effects — as the narrative
-evolves, second/third order risks may change or new ones may emerge:
+evolves, second/third order risks may change or new ones may emerge. Include both negative
+and positive effects. Re-evaluate which assets are hurt vs benefit:
 {{
     "summary": "updated 2-3 sentence summary",
     "risk_level": "critical|high|medium|low",
     "trend": "intensifying|stable|fading",
     "confidence": 0.0-1.0,
-    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"]}},
+    "assets_at_risk": {{"equities": [{{"asset": "US Technology", "explanation": "why hurt"}}], "fx": [{{"asset": "USD/JPY", "explanation": "why hurt"}}]}},
+    "assets_to_benefit": {{"commodities": [{{"asset": "Gold", "explanation": "why benefits"}}]}},
     "cascading_effects": [
-        {{"order": 2, "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
-        {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}
+        {{"order": 2, "direction": "negative", "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
+        {{"order": 2, "direction": "positive", "effect": "beneficial knock-on", "mechanism": "why this helps", "affected_sub_assets": ["Gold"]}},
+        {{"order": 3, "direction": "negative", "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}
     ]
 }}
 
