@@ -154,7 +154,7 @@ def render_timeline(narratives: list[Narrative]) -> None:
             f"</div>"
             + _render_cascading_effects(selected.cascading_effects)
             + _render_signposts(selected.signposts)
-            + f"</div>",
+            + "</div>",
             unsafe_allow_html=True,
         )
 
@@ -240,13 +240,20 @@ def render_timeline(narratives: list[Narrative]) -> None:
             for sig in sorted_signals:
                 ts = sig.timestamp.strftime("%b %d")
                 src = sig.source.value.upper()
+                link_html = ""
+                if sig.url:
+                    link_html = (
+                        f' <a href="{sig.url}" target="_blank" '
+                        f'style="color: #00d4aa; font-size: 0.7rem; '
+                        f'text-decoration: none;">[src]</a>'
+                    )
                 rows.append(
                     f'<div class="signal-row">'
                     f'<div class="signal-dot" '
                     f'style="background: {color};"></div>'
                     f"<div style=\"flex: 1;\">"
                     f'<span style="color: #e0e4ec; font-size: 0.82rem;">'
-                    f"{sig.title}</span>"
+                    f"{sig.title}{link_html}</span>"
                     f'<div class="signal-meta">'
                     f'<span class="source-chip">{src}</span>'
                     f" &middot; {ts}"

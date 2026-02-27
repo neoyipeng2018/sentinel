@@ -8,7 +8,7 @@ import streamlit as st
 
 from ai.chains.risk_assessor import compute_asset_risk_scores, get_top_risks
 from ai.chains.trend_analyzer import classify_emerging_risk
-from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel, Signpost
+from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel, Signal, Signpost
 from storage.narrative_store import get_risk_score_history
 
 RISK_COLORS = {
@@ -153,6 +153,53 @@ def _render_counter_narrative(counter: CounterNarrative) -> str:
         f'<div style="color: #546e7a; font-size: 0.7rem;">'
         f"Confidence: {conf_pct}</div>"
         "</div>"
+    )
+
+
+SOURCE_LABELS = {
+    "news": "NEWS",
+    "market_data": "MARKET",
+    "social": "SOCIAL",
+    "custom": "CUSTOM",
+}
+
+
+def _render_sources(signals: list[Signal]) -> str:
+    """Render a collapsible SOURCES block listing signal titles with links."""
+    if not signals:
+        return ""
+
+    rows = ""
+    for sig in signals:
+        src_label = SOURCE_LABELS.get(sig.source.value, sig.source.value.upper())
+        ts = sig.timestamp.strftime("%b %d, %H:%M")
+        if sig.url:
+            title_html = (
+                f'<a href="{sig.url}" target="_blank" '
+                f'style="color: #e0e4ec; text-decoration: none;">{sig.title}</a>'
+                f' <a href="{sig.url}" target="_blank" '
+                f'style="color: #00d4aa; font-size: 0.7rem; text-decoration: none;">'
+                f"[src]</a>"
+            )
+        else:
+            title_html = f'<span style="color: #e0e4ec;">{sig.title}</span>'
+        rows += (
+            f'<div class="cascade-row">'
+            f'<span class="cascade-order" style="background: rgba(0,212,170,0.10); '
+            f'color: #00d4aa; font-size: 0.6rem;">{src_label}</span>'
+            f'<div class="cascade-connector" style="border-color: #2a3a4a;"></div>'
+            f"<div>"
+            f'<div class="cascade-effect" style="font-size: 0.8rem;">{title_html}</div>'
+            f'<div class="cascade-mechanism">{ts}</div>'
+            f"</div>"
+            f"</div>"
+        )
+
+    return (
+        f'<div class="cascade-chain" style="border-left-color: #2a3a4a;">'
+        f'<div class="cascade-header" style="color: #546e7a;">SOURCES</div>'
+        f"{rows}"
+        f"</div>"
     )
 
 
@@ -352,6 +399,7 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
                 else ""
             )
             + _render_signposts(nar.signposts)
+            + _render_sources(nar.signals)
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -487,6 +535,7 @@ def render_overview(
                 else ""
             )
             + _render_signposts(nar.signposts)
+            + _render_sources(nar.signals)
             + "</div>"
             "</div></div>",
             unsafe_allow_html=True,
