@@ -196,10 +196,16 @@ def _render_sources(signals: list[Signal]) -> str:
         )
 
     return (
-        f'<div class="cascade-chain" style="border-left-color: #2a3a4a;">'
-        f'<div class="cascade-header" style="color: #546e7a;">SOURCES</div>'
+        f'<details style="margin-top: 6px;">'
+        f'<summary style="color: #546e7a; font-size: 0.7rem; font-weight: 700; '
+        f'letter-spacing: 0.1em; cursor: pointer; list-style: none; '
+        f'user-select: none;">'
+        f"&#9656; SOURCES ({len(signals)})</summary>"
+        f'<div class="cascade-chain" style="border-left-color: #2a3a4a; '
+        f'margin-top: 4px;">'
         f"{rows}"
         f"</div>"
+        f"</details>"
     )
 
 
