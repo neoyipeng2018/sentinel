@@ -253,6 +253,16 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
             hours = age_delta.seconds // 3600
             age_str = f"{hours}h ago" if hours > 0 else "just now"
 
+        # Build sub-asset detail string
+        asset_parts = []
+        for a in nar.affected_assets:
+            label = ASSET_LABELS.get(a, a.value)
+            subs = nar.asset_detail.get(a)
+            if subs:
+                label += f" ({', '.join(subs)})"
+            asset_parts.append(label)
+        assets_str = ", ".join(asset_parts) if asset_parts else "—"
+
         st.markdown(
             f'<div class="cmd-panel" style="border-left: 3px dashed {color}; '
             f'background: rgba(255,255,255,0.02);">'
@@ -267,10 +277,17 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
             f'<div style="color: #8892a4; font-size: 0.8rem; line-height: 1.5; '
             f'margin-bottom: 6px;">{nar.summary}</div>'
             f'<div class="text-muted">'
+            f"Assets: {assets_str} &middot; "
             f"First seen: {age_str} &middot; "
             f"Signals: {len(nar.signals)} &middot; "
             f"Trend: {nar.trend}"
-            f"</div></div>",
+            f"</div>"
+            + (
+                _render_cascading_effects(nar.cascading_effects)
+                if nar.cascading_effects
+                else ""
+            )
+            + "</div>",
             unsafe_allow_html=True,
         )
 
@@ -399,7 +416,7 @@ def render_overview(
                 if nar.cascading_effects
                 else ""
             )
-            + f"</div>"
-            f"</div></div>",
+            + "</div>"
+            "</div></div>",
             unsafe_allow_html=True,
         )
