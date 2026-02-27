@@ -8,7 +8,7 @@ import streamlit as st
 
 from ai.chains.risk_assessor import compute_asset_risk_scores, get_top_risks
 from ai.chains.trend_analyzer import classify_emerging_risk
-from models.schemas import AssetClass, Narrative, RiskLevel
+from models.schemas import AssetClass, CounterNarrative, Narrative, RiskLevel
 from storage.narrative_store import get_risk_score_history
 
 RISK_COLORS = {
@@ -95,6 +95,23 @@ def _render_cascading_effects(effects: list) -> str:
         f'<div class="cascade-header">CASCADING EFFECTS</div>'
         f"{rows}"
         f"</div>"
+    )
+
+
+def _render_counter_narrative(counter: CounterNarrative) -> str:
+    """Render a counter-narrative (blindspot) section."""
+    conf_pct = f"{counter.confidence:.0%}"
+    return (
+        '<div class="cascade-chain" style="border-left-color: #4a6fa5;">'
+        '<div class="cascade-header" style="color: #4a6fa5;">'
+        "COUNTER-NARRATIVE</div>"
+        f'<div style="color: #b0bec5; font-size: 0.8rem; line-height: 1.5; '
+        f'margin-bottom: 4px;">{counter.counter_argument}</div>'
+        f'<div style="color: #607d8b; font-size: 0.75rem; line-height: 1.4; '
+        f'margin-bottom: 4px;"><strong>Basis:</strong> {counter.basis}</div>'
+        f'<div style="color: #546e7a; font-size: 0.7rem;">'
+        f"Confidence: {conf_pct}</div>"
+        "</div>"
     )
 
 
@@ -287,6 +304,11 @@ def _render_emerging_risks(narratives: list[Narrative]) -> None:
                 if nar.cascading_effects
                 else ""
             )
+            + (
+                _render_counter_narrative(nar.counter_narrative)
+                if nar.counter_narrative
+                else ""
+            )
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -414,6 +436,11 @@ def render_overview(
             + (
                 _render_cascading_effects(nar.cascading_effects)
                 if nar.cascading_effects
+                else ""
+            )
+            + (
+                _render_counter_narrative(nar.counter_narrative)
+                if nar.counter_narrative
                 else ""
             )
             + "</div>"

@@ -7,6 +7,7 @@ time series accumulate even when no tab is open.
 import logging
 import threading
 
+from ai.chains.counter_narrative import generate_counter_narratives
 from ai.chains.narrative_extractor import extract_narratives
 from ai.chains.risk_assessor import compute_asset_risk_scores
 from ai.chains.trend_analyzer import compute_quantitative_trend
@@ -58,6 +59,12 @@ def run_refresh_cycle(prefer_free: bool = True) -> int:
 
     llm = get_llm(prefer_free=prefer_free)
     narratives = extract_narratives(signals, llm)
+
+    # Generate counter-narratives before saving
+    try:
+        generate_counter_narratives(narratives, llm)
+    except Exception:
+        logger.exception("Counter-narrative generation failed — continuing without")
 
     old_narratives = load_active_narratives()
     clear_narratives()

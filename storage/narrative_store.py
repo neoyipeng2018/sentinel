@@ -5,7 +5,15 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal, SignalSource
+from models.schemas import (
+    AssetClass,
+    CascadingEffect,
+    CounterNarrative,
+    Narrative,
+    RiskLevel,
+    Signal,
+    SignalSource,
+)
 
 DB_PATH = Path(__file__).parent.parent / "sentinel.db"
 
@@ -103,6 +111,15 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: add counter_narrative to narratives for existing DBs
+    try:
+        conn.execute(
+            "ALTER TABLE narratives ADD COLUMN counter_narrative TEXT DEFAULT 'null'"
+        )
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.close()
 
 
@@ -121,8 +138,9 @@ def save_narrative(narrative: Narrative) -> None:
     conn.execute(
         """INSERT OR REPLACE INTO narratives
         (id, title, summary, risk_level, affected_assets, asset_detail,
-         cascading_effects, first_seen, last_updated, trend, confidence, active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
+         cascading_effects, counter_narrative,
+         first_seen, last_updated, trend, confidence, active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)""",
         (
             narrative.id,
             narrative.title,
@@ -131,6 +149,9 @@ def save_narrative(narrative: Narrative) -> None:
             json.dumps([a.value for a in narrative.affected_assets]),
             json.dumps({a.value: subs for a, subs in narrative.asset_detail.items()}),
             json.dumps([e.model_dump() for e in narrative.cascading_effects]),
+            json.dumps(narrative.counter_narrative.model_dump())
+            if narrative.counter_narrative
+            else "null",
             narrative.first_seen.isoformat(),
             narrative.last_updated.isoformat(),
             narrative.trend,
@@ -222,6 +243,15 @@ def load_active_narratives() -> list[Narrative]:
             CascadingEffect(**e) for e in raw_effects if isinstance(e, dict)
         ]
 
+        # Deserialize counter_narrative
+        raw_counter = row["counter_narrative"] if "counter_narrative" in row.keys() else "null"
+        counter_obj = json.loads(raw_counter) if raw_counter else None
+        counter_narrative = (
+            CounterNarrative(**counter_obj)
+            if isinstance(counter_obj, dict)
+            else None
+        )
+
         narratives.append(
             Narrative(
                 id=row["id"],
@@ -231,6 +261,7 @@ def load_active_narratives() -> list[Narrative]:
                 affected_assets=[AssetClass(a) for a in json.loads(row["affected_assets"])],
                 asset_detail=asset_detail,
                 cascading_effects=cascading_effects,
+                counter_narrative=counter_narrative,
                 signals=signals,
                 first_seen=datetime.fromisoformat(row["first_seen"]),
                 last_updated=datetime.fromisoformat(row["last_updated"]),

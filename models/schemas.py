@@ -48,6 +48,14 @@ class CascadingEffect(BaseModel):
     affected_sub_assets: list[str] = Field(default_factory=list)  # e.g. ["USD/BRL", "USD/ZAR"]
 
 
+class CounterNarrative(BaseModel):
+    """The strongest argument against a risk narrative."""
+
+    counter_argument: str
+    basis: str  # what evidence or logic supports this counter
+    confidence: float  # 0-1, how strong this counter-argument is
+
+
 class Narrative(BaseModel):
     """A risk narrative synthesized from multiple signals."""
 
@@ -58,6 +66,7 @@ class Narrative(BaseModel):
     affected_assets: list[AssetClass]
     asset_detail: dict[AssetClass, list[str]] = Field(default_factory=dict)
     cascading_effects: list[CascadingEffect] = Field(default_factory=list)
+    counter_narrative: CounterNarrative | None = None
     signals: list[Signal] = Field(default_factory=list)
     first_seen: datetime = Field(default_factory=datetime.utcnow)
     last_updated: datetime = Field(default_factory=datetime.utcnow)

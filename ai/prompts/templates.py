@@ -92,6 +92,37 @@ Be specific. Reference data points where available. No fluff.""",
     ]
 )
 
+COUNTER_NARRATIVE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """You are a financial risk skeptic and devil's advocate. For each risk narrative
+presented to you, you must construct the strongest possible argument for why that
+narrative is wrong, overstated, or unlikely to materialize.
+
+Your goal is to surface blindspots and prevent confirmation bias. Be specific —
+cite historical precedent, structural factors, or market mechanisms that undermine
+the narrative. Do NOT simply say "it might not happen" — explain WHY it won't.""",
+        ),
+        (
+            "human",
+            """For each of the following risk narratives, provide the strongest counter-argument:
+
+{narratives}
+
+Return a JSON array with one object per narrative, in the same order:
+[{{
+    "narrative_title": "title of the narrative you are countering",
+    "counter_argument": "1-2 sentence counter-argument",
+    "basis": "the evidence, logic, or precedent supporting this counter",
+    "confidence": 0.0-1.0
+}}]
+
+Return ONLY the JSON array, no other text.""",
+        ),
+    ]
+)
+
 NARRATIVE_UPDATE_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
