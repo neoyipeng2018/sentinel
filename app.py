@@ -4,26 +4,17 @@ from datetime import datetime
 
 import streamlit as st
 
-from ai.chains.narrative_extractor import extract_narratives
-from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.llm import get_llm
 from config.overrides import get_custom_signals, has_custom_llm
+from config.settings import settings
 from dashboard.alerts import render_alerts
 from dashboard.briefing import render_briefing
 from dashboard.overview import render_overview
 from dashboard.styles import inject_custom_css
 from dashboard.timeline import render_timeline
 from models.schemas import AssetClass, RiskLevel
-from sources.market import detect_anomalies, fetch_market_data
-from sources.news import fetch_news_signals
-from sources.social import fetch_reddit_signals
-from storage.narrative_store import (
-    clear_narratives,
-    init_db,
-    load_active_narratives,
-    match_to_prior_narratives,
-    save_narrative,
-)
+from scheduler import refresh_lock, run_refresh_cycle, start_scheduler, stop_scheduler
+from storage.narrative_store import init_db, load_active_narratives
 
 st.set_page_config(
     page_title="Sentinel",
@@ -34,6 +25,14 @@ st.set_page_config(
 
 inject_custom_css()
 init_db()
+
+
+def _run_refresh(prefer_free: bool = True) -> None:
+    """Execute one manual refresh cycle using the shared lock."""
+    with refresh_lock:
+        count = run_refresh_cycle(prefer_free=prefer_free)
+    st.session_state["last_refresh"] = datetime.now()
+    st.session_state["last_refresh_count"] = count
 
 
 # --- Sidebar ---
@@ -96,47 +95,20 @@ with st.sidebar:
 
     if st.button("REFRESH SIGNALS", type="primary", use_container_width=True):
         with st.spinner("Fetching signals..."):
-            signals = []
+            _run_refresh(prefer_free=prefer_free)
+            count = st.session_state.get("last_refresh_count", 0)
+            if count:
+                st.success(f"Extracted {count} risk narratives")
 
-            if fetch_news:
-                st.text("Fetching news feeds...")
-                signals.extend(fetch_news_signals())
-
-            if fetch_market:
-                st.text("Fetching market data...")
-                data = fetch_market_data()
-                signals.extend(detect_anomalies(data))
-
-            if fetch_social:
-                st.text("Fetching social signals...")
-                signals.extend(fetch_reddit_signals())
-
-            if fetch_custom and custom_signals_fn:
-                st.text("Fetching custom signals...")
-                signals.extend(custom_signals_fn())
-
-            st.text(f"Collected {len(signals)} signals")
-
-            if signals:
-                st.text("Extracting narratives...")
-                llm = get_llm(prefer_free=prefer_free)
-                narratives = extract_narratives(signals, llm)
-
-                old_narratives = load_active_narratives()
-                clear_narratives()
-                match_to_prior_narratives(narratives, old_narratives)
-
-                for nar in narratives:
-                    save_narrative(nar)
-                    # Apply quantitative trend if history exists
-                    trend = compute_quantitative_trend(
-                        nar.id, len(nar.signals)
-                    )
-                    if trend:
-                        nar.trend = trend
-                        save_narrative(nar)
-
-                st.success(f"Extracted {len(narratives)} risk narratives")
+    st.markdown(
+        '<div style="height: 1px; background: #1a2332; margin: 8px 0;"></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-header">AUTO-REFRESH</div>',
+        unsafe_allow_html=True,
+    )
+    auto_refresh = st.checkbox("Auto-refresh (hourly)", value=True)
 
     st.markdown(
         '<div style="height: 1px; background: #1a2332; margin: 8px 0;"></div>',
@@ -167,18 +139,24 @@ with st.sidebar:
         format_func=lambda a: ASSET_LABELS.get(a, a.value),
         label_visibility="collapsed",
     )
-    if selected_assets:
-        asset_set = set(selected_assets)
-        narratives = [
-            n for n in narratives
-            if asset_set & set(n.affected_assets)
-        ]
+    asset_set = set(selected_assets)
+    narratives = [
+        n for n in narratives
+        if asset_set & set(n.affected_assets)
+    ]
 
     st.markdown(
         f'<div class="text-muted" style="text-align: center;">'
         f"{len(narratives)} ACTIVE NARRATIVES</div>",
         unsafe_allow_html=True,
     )
+
+
+# --- Background scheduler ---
+if auto_refresh:
+    start_scheduler(settings.auto_refresh_interval_minutes)
+else:
+    stop_scheduler()
 
 
 # --- Header Bar ---
@@ -244,7 +222,7 @@ with m3:
 
 # --- Main Content ---
 if page == "Overview":
-    render_overview(narratives)
+    render_overview(narratives, selected_assets)
 elif page == "Alert Feed":
     render_alerts(narratives)
 elif page == "Timeline":
