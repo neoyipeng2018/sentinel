@@ -17,14 +17,20 @@ Rules:
 - Group related signals into distinct narratives
 - Each narrative must have a clear, concise title
 - Assess risk level: critical, high, medium, or low
-- Identify affected asset classes: equities, fixed_income, private_markets,
+- Identify affected asset classes: equities, credit, rates, private_markets,
   real_estate, commodities, fx
+  - "credit" = corporate credit, investment-grade and high-yield bonds, credit spreads,
+    leveraged loans, CLOs. Use for risks driven by corporate default risk, spread widening,
+    or credit conditions.
+  - "rates" = government bonds, sovereign debt, interest rate swaps, yield curves.
+    Use for risks driven by central bank policy, inflation, fiscal deficits, or duration.
 - Assess trend: intensifying, stable, or fading
 - Provide a confidence score (0-1) based on signal strength and corroboration
 - For each affected asset class, list specific sub-assets in an "asset_detail" object keyed
   by asset class. Qualify with country/region where relevant:
   - equities: region + sector or index, e.g. "US Technology", "Japan Financials", "EU Autos", "Nikkei 225"
-  - fixed_income: issuer type + region + tenor where relevant, e.g. "US 10Y Treasuries", "US 2Y/10Y Spread", "EU IG Credit", "EM Sovereign Debt", "Japan 30Y JGBs"
+  - credit: issuer type + region + quality, e.g. "US IG Credit", "EU HY Credit", "US Leveraged Loans", "EM Corporate Debt", "US CLOs"
+  - rates: sovereign issuer + tenor, e.g. "US 10Y Treasuries", "US 2Y/10Y Spread", "Japan 30Y JGBs", "EU Sovereign Debt", "EM Sovereign Debt"
   - fx: currency pairs, e.g. "USD/JPY", "EUR/USD", "CNY/USD"
   - commodities: specific names, e.g. "Brent Crude", "Gold", "US Natural Gas", "Copper"
   - real_estate: region + segment, e.g. "US Commercial", "China Residential", "EU Office"
@@ -51,8 +57,8 @@ Return your analysis as a JSON array of narratives with this structure:
     "title": "narrative title",
     "summary": "2-3 sentence summary of the risk narrative",
     "risk_level": "critical|high|medium|low",
-    "affected_assets": ["equities", "fixed_income", ...],
-    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "fixed_income": ["US Treasuries"]}},
+    "affected_assets": ["equities", "credit", "rates", ...],
+    "asset_detail": {{"equities": ["US Technology", "Japan Financials"], "fx": ["USD/JPY"], "rates": ["US 10Y Treasuries"], "credit": ["US IG Credit"]}},
     "cascading_effects": [
         {{"order": 2, "effect": "what happens next", "mechanism": "why this follows", "affected_sub_assets": ["USD/BRL", "US Technology"]}},
         {{"order": 3, "effect": "further downstream impact", "mechanism": "the causal chain", "affected_sub_assets": ["EM Sovereign Debt"]}}

@@ -43,7 +43,8 @@ local_config.py is git-ignored so your settings won't cause merge conflicts.
 # ---------------------------------------------------------------------------
 # WATCHLIST = {
 #     "equities": ["^GSPC", "^IXIC", "^DJI", "^VIX", "^RUT"],
-#     "fixed_income": ["^TNX", "^TYX", "^FVX", "TLT", "HYG", "LQD"],
+#     "credit": ["HYG", "LQD", "JNK", "BKLN"],
+#     "rates": ["^TNX", "^TYX", "^FVX", "TLT", "IEF"],
 #     "commodities": ["GC=F", "CL=F", "SI=F"],
 #     "fx": ["DX-Y.NYB", "EURUSD=X", "JPYUSD=X"],
 #     "real_estate": ["VNQ", "IYR", "XLRE"],

@@ -120,6 +120,18 @@ def init_db() -> None:
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    # Migration: rename fixed_income -> credit in existing data
+    conn.execute(
+        "UPDATE narratives SET affected_assets = REPLACE(affected_assets, '\"fixed_income\"', '\"credit\"')"
+    )
+    conn.execute(
+        "UPDATE narratives SET asset_detail = REPLACE(asset_detail, '\"fixed_income\"', '\"credit\"')"
+    )
+    conn.execute(
+        "UPDATE risk_score_snapshots SET asset_class = 'credit' WHERE asset_class = 'fixed_income'"
+    )
+    conn.commit()
+
     conn.close()
 
 

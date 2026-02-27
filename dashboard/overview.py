@@ -20,7 +20,8 @@ RISK_COLORS = {
 
 ASSET_LABELS = {
     AssetClass.EQUITIES: "Equities",
-    AssetClass.FIXED_INCOME: "Fixed Income",
+    AssetClass.CREDIT: "Credit",
+    AssetClass.RATES: "Rates",
     AssetClass.PRIVATE_MARKETS: "Private Mkts",
     AssetClass.REAL_ESTATE: "Real Estate",
     AssetClass.COMMODITIES: "Commodities",
@@ -179,7 +180,8 @@ def _render_risk_time_series(selected_assets: list[AssetClass] | None = None) ->
 
     line_colors = {
         "equities": "#00d4aa",
-        "fixed_income": "#4fc3f7",
+        "credit": "#4fc3f7",
+        "rates": "#81d4fa",
         "private_markets": "#ba68c8",
         "real_estate": "#ff8a65",
         "commodities": "#ffd54f",

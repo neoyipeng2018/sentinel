@@ -110,7 +110,8 @@ with st.sidebar:
     )
     ASSET_LABELS = {
         AssetClass.EQUITIES: "Equities",
-        AssetClass.FIXED_INCOME: "Fixed Income",
+        AssetClass.CREDIT: "Credit",
+        AssetClass.RATES: "Rates",
         AssetClass.PRIVATE_MARKETS: "Private Mkts",
         AssetClass.REAL_ESTATE: "Real Estate",
         AssetClass.COMMODITIES: "Commodities",
