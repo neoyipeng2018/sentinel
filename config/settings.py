@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # App config
     refresh_interval_minutes: int = 30
+    auto_refresh_interval_minutes: int = 60
     max_narratives: int = 50
     narrative_lookback_days: int = 30
 
