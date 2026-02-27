@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     cerebras_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    cerebras_model: str = "zai-glm-4.7"
+    cerebras_model: str = "gpt-oss-120b"
 
     # Data sources
     fred_api_key: str = ""
