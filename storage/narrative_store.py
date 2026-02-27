@@ -2,7 +2,7 @@
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from models.schemas import AssetClass, CascadingEffect, Narrative, RiskLevel, Signal, SignalSource
@@ -62,6 +62,15 @@ def init_db() -> None:
             summary TEXT NOT NULL,
             signal_count INTEGER DEFAULT 0,
             FOREIGN KEY (narrative_id) REFERENCES narratives(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS risk_score_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            asset_class TEXT NOT NULL,
+            score REAL NOT NULL,
+            narrative_count INTEGER NOT NULL DEFAULT 0,
+            top_narrative_title TEXT
         );
     """
     )
@@ -280,5 +289,80 @@ def get_narrative_history(narrative_id: str) -> list[dict]:
         "SELECT * FROM narrative_history WHERE narrative_id = ? ORDER BY timestamp ASC",
         (narrative_id,),
     ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def save_risk_score_snapshot(
+    scores: dict[AssetClass, float],
+    narratives: list[Narrative],
+) -> None:
+    """Persist current aggregate risk scores for time series tracking.
+
+    Inserts one row per asset class with the current score, narrative count,
+    and the title of the highest-risk narrative for that asset class.
+    """
+    conn = _get_conn()
+    now = datetime.utcnow().isoformat()
+
+    for asset_class, score in scores.items():
+        # Find narratives affecting this asset class
+        relevant = [n for n in narratives if asset_class in n.affected_assets]
+        count = len(relevant)
+        top_title = None
+        if relevant:
+            # Pick highest risk narrative for this asset class
+            risk_order = {
+                RiskLevel.CRITICAL: 4,
+                RiskLevel.HIGH: 3,
+                RiskLevel.MEDIUM: 2,
+                RiskLevel.LOW: 1,
+            }
+            best = max(relevant, key=lambda n: risk_order.get(n.risk_level, 0))
+            top_title = best.title
+
+        conn.execute(
+            """INSERT INTO risk_score_snapshots
+            (timestamp, asset_class, score, narrative_count, top_narrative_title)
+            VALUES (?, ?, ?, ?, ?)""",
+            (now, asset_class.value, score, count, top_title),
+        )
+
+    conn.commit()
+    conn.close()
+
+
+def get_risk_score_history(
+    asset_class: AssetClass | None = None,
+    lookback_hours: int = 168,
+) -> list[dict]:
+    """Query risk score history for charting.
+
+    Args:
+        asset_class: Filter to a single asset class, or None for all.
+        lookback_hours: How far back to look (default 7 days = 168h).
+
+    Returns:
+        List of dicts with timestamp, asset_class, score, narrative_count,
+        top_narrative_title.
+    """
+    conn = _get_conn()
+    cutoff = (datetime.utcnow() - timedelta(hours=lookback_hours)).isoformat()
+
+    if asset_class:
+        rows = conn.execute(
+            """SELECT * FROM risk_score_snapshots
+            WHERE asset_class = ? AND timestamp >= ?
+            ORDER BY timestamp ASC""",
+            (asset_class.value, cutoff),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """SELECT * FROM risk_score_snapshots
+            WHERE timestamp >= ?
+            ORDER BY timestamp ASC""",
+            (cutoff,),
+        ).fetchall()
+
     conn.close()
     return [dict(r) for r in rows]

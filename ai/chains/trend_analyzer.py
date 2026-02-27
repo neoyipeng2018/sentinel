@@ -1,5 +1,6 @@
 """Quantitative trend analysis based on narrative history snapshots."""
 
+from models.schemas import Narrative, RiskLevel
 from storage.narrative_store import get_narrative_history
 
 RISK_LEVEL_MAP = {"low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -51,3 +52,32 @@ def compute_quantitative_trend(
     elif score < -0.3:
         return "fading"
     return "stable"
+
+
+def classify_emerging_risk(narrative: Narrative) -> bool:
+    """Classify whether a narrative is an emerging risk.
+
+    A narrative is "emerging" if ALL of:
+    - Young: ≤3 history snapshots (just appeared recently)
+    - Risk ≥ medium: not a low-severity blip
+    - Escalating: trend is "intensifying" OR risk level ≥ high
+    - Backed by evidence: ≥2 signals
+    """
+    history = get_narrative_history(narrative.id)
+    if len(history) > 3:
+        return False
+
+    if narrative.risk_level == RiskLevel.LOW:
+        return False
+
+    is_escalating = (
+        narrative.trend == "intensifying"
+        or narrative.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+    )
+    if not is_escalating:
+        return False
+
+    if len(narrative.signals) < 2:
+        return False
+
+    return True
