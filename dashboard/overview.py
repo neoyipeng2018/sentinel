@@ -117,7 +117,7 @@ def _render_risk_time_series(selected_assets: list[AssetClass] | None = None) ->
     lookback_label = st.selectbox(
         "Lookback period",
         options=list(LOOKBACK_OPTIONS.keys()),
-        index=2,  # default 7d
+        index=0,  # default 24h
         label_visibility="collapsed",
     )
     lookback_hours = LOOKBACK_OPTIONS[lookback_label]

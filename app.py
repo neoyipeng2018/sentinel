@@ -5,7 +5,7 @@ from datetime import datetime
 import streamlit as st
 
 from ai.llm import get_llm
-from config.overrides import get_custom_signals, has_custom_llm
+from config.overrides import get_custom_signals
 from config.settings import settings
 from dashboard.alerts import render_alerts
 from dashboard.briefing import render_briefing
@@ -63,23 +63,7 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        '<div class="section-header">LLM PROVIDER</div>',
-        unsafe_allow_html=True,
-    )
-    if has_custom_llm():
-        st.markdown(
-            '<span class="source-chip">CUSTOM LLM ACTIVE</span>',
-            unsafe_allow_html=True,
-        )
-    llm_provider = st.selectbox("LLM Provider", ["Cerebras (Free)", "OpenAI"],
-                                label_visibility="collapsed")
-    prefer_free = llm_provider == "Cerebras (Free)"
-
-    st.markdown(
-        '<div style="height: 1px; background: #1a2332; margin: 8px 0;"></div>',
-        unsafe_allow_html=True,
-    )
+    prefer_free = True
 
     st.markdown(
         '<div class="section-header">DATA SOURCES</div>',
