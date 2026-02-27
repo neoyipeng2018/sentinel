@@ -41,20 +41,22 @@ Rules:
   NEGATIVE effects (harmful) and POSITIVE effects (beneficial). For each effect provide:
   - "order": 2 or 3 (second-order = direct knock-on, third-order = further downstream)
   - "direction": "negative" or "positive"
+  - "timeframe": how soon this effect would materialize, e.g. "days", "1-2 weeks",
+    "1-3 months", "3-6 months", "6-12 months". Be specific and realistic.
   - "effect": what happens (concise, one sentence)
   - "mechanism": why this follows from the primary risk (the causal link, one sentence)
   - "sub_assets_at_risk": instruments hurt by THIS effect (qualify with region/sector/tenor)
   - "sub_assets_to_benefit": instruments that benefit from THIS effect
   Example for "Japan carry trade unwinding":
-  - order 2, negative: "EM currencies sell off" / "Leveraged carry positions funded in JPY
-    unwind, forcing liquidation of EM assets" / at_risk: ["USD/BRL", "USD/ZAR", "USD/MXN"]
+  - order 2, negative, "days": "EM currencies sell off" / "Leveraged carry positions funded
+    in JPY unwind, forcing liquidation of EM assets" / at_risk: ["USD/BRL", "USD/ZAR"]
     / benefit: ["USD Index"]
-  - order 3, negative: "EM central banks forced into emergency rate hikes" / "Currency
-    defense depletes reserves and tightens domestic liquidity" / at_risk: ["Brazil Selic
-    Rate", "EM Sovereign Debt"] / benefit: ["USD Money Markets"]
-  - order 2, positive: "Stronger yen benefits Japanese consumers" / "Import costs fall,
-    boosting domestic purchasing power" / at_risk: ["Japan Exporters"]
-    / benefit: ["Japan Consumer Staples", "Japan Retail"] """,
+  - order 3, negative, "1-3 months": "EM central banks forced into emergency rate hikes"
+    / "Currency defense depletes reserves and tightens domestic liquidity"
+    / at_risk: ["Brazil Selic Rate", "EM Sovereign Debt"] / benefit: ["USD Money Markets"]
+  - order 2, positive, "1-2 weeks": "Stronger yen benefits Japanese consumers"
+    / "Import costs fall, boosting domestic purchasing power"
+    / at_risk: ["Japan Exporters"] / benefit: ["Japan Consumer Staples"] """,
         ),
         (
             "human",
@@ -71,16 +73,16 @@ Return your analysis as a JSON array of narratives with this structure:
     "assets_at_risk": {{"equities": [{{"asset": "US Technology", "explanation": "Higher rates compress tech valuations"}}, {{"asset": "Japan Financials", "explanation": "Yen strength hits export earnings"}}], "fx": [{{"asset": "USD/JPY", "explanation": "Carry trade unwind drives sharp yen appreciation"}}]}},
     "assets_to_benefit": {{"commodities": [{{"asset": "Gold", "explanation": "Safe-haven demand rises on risk-off sentiment"}}], "rates": [{{"asset": "US 10Y Treasuries", "explanation": "Flight to quality compresses yields"}}]}},
     "cascading_effects": [
-        {{"order": 2, "direction": "negative", "effect": "what happens next",
-          "mechanism": "why this follows",
+        {{"order": 2, "direction": "negative", "timeframe": "days",
+          "effect": "what happens next", "mechanism": "why this follows",
           "sub_assets_at_risk": ["USD/BRL", "US Technology"],
           "sub_assets_to_benefit": ["USD Index"]}},
-        {{"order": 3, "direction": "negative", "effect": "further downstream",
-          "mechanism": "the causal chain",
+        {{"order": 3, "direction": "negative", "timeframe": "1-3 months",
+          "effect": "further downstream", "mechanism": "the causal chain",
           "sub_assets_at_risk": ["EM Sovereign Debt"],
           "sub_assets_to_benefit": ["USD Money Markets"]}},
-        {{"order": 2, "direction": "positive", "effect": "beneficial knock-on",
-          "mechanism": "why this helps",
+        {{"order": 2, "direction": "positive", "timeframe": "1-2 weeks",
+          "effect": "beneficial knock-on", "mechanism": "why this helps",
           "sub_assets_at_risk": ["Japan Exporters"],
           "sub_assets_to_benefit": ["Gold", "US Treasuries"]}}
     ],
@@ -216,16 +218,16 @@ and positive effects. Re-evaluate which assets are hurt vs benefit:
     "assets_at_risk": {{"equities": [{{"asset": "US Technology", "explanation": "why hurt"}}], "fx": [{{"asset": "USD/JPY", "explanation": "why hurt"}}]}},
     "assets_to_benefit": {{"commodities": [{{"asset": "Gold", "explanation": "why benefits"}}]}},
     "cascading_effects": [
-        {{"order": 2, "direction": "negative", "effect": "what happens next",
-          "mechanism": "why this follows",
+        {{"order": 2, "direction": "negative", "timeframe": "days",
+          "effect": "what happens next", "mechanism": "why this follows",
           "sub_assets_at_risk": ["USD/BRL", "US Technology"],
           "sub_assets_to_benefit": ["USD Index"]}},
-        {{"order": 2, "direction": "positive", "effect": "beneficial knock-on",
-          "mechanism": "why this helps",
+        {{"order": 2, "direction": "positive", "timeframe": "1-2 weeks",
+          "effect": "beneficial knock-on", "mechanism": "why this helps",
           "sub_assets_at_risk": ["Japan Exporters"],
           "sub_assets_to_benefit": ["Gold"]}},
-        {{"order": 3, "direction": "negative", "effect": "further downstream",
-          "mechanism": "the causal chain",
+        {{"order": 3, "direction": "negative", "timeframe": "3-6 months",
+          "effect": "further downstream", "mechanism": "the causal chain",
           "sub_assets_at_risk": ["EM Sovereign Debt"],
           "sub_assets_to_benefit": []}}
     ]

@@ -105,6 +105,15 @@ def _render_effect_rows(effects: list, color: str, icon: str) -> str:
                 f'<span style="color: #69f0ae; font-size: 0.6rem; '
                 f'font-weight: 700;">&#9650;</span> {chips}</div>'
             )
+        timeframe = getattr(eff, "timeframe", "")
+        tf_html = (
+            f' <span style="color: #78909c; font-size: 0.65rem; '
+            f'font-weight: 600; border: 1px solid #37474f; '
+            f'border-radius: 3px; padding: 0 4px; '
+            f'margin-left: 4px;">{timeframe}</span>'
+            if timeframe
+            else ""
+        )
         rows += (
             f'<div class="cascade-row">'
             f'<span class="cascade-order" style="background: {color}15; '
@@ -112,7 +121,7 @@ def _render_effect_rows(effects: list, color: str, icon: str) -> str:
             f'<div class="cascade-connector" '
             f'style="border-color: {color};"></div>'
             f"<div>"
-            f'<div class="cascade-effect">{eff.effect}</div>'
+            f'<div class="cascade-effect">{eff.effect}{tf_html}</div>'
             f'<div class="cascade-mechanism">{eff.mechanism}</div>'
             f"{assets_html}"
             f"</div>"

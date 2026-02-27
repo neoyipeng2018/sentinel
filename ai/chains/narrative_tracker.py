@@ -80,6 +80,7 @@ def update_narrative(
                     CascadingEffect(
                         order=int(eff.get("order", 2)),
                         direction=eff.get("direction", "negative"),
+                        timeframe=eff.get("timeframe", ""),
                         effect=eff["effect"],
                         mechanism=eff["mechanism"],
                         sub_assets_at_risk=[

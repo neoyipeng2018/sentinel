@@ -52,6 +52,7 @@ class CascadingEffect(BaseModel):
 
     order: int  # 2 = second order, 3 = third order
     direction: str = "negative"  # "negative" = harmful, "positive" = beneficial
+    timeframe: str = ""  # e.g. "days", "1-2 weeks", "3-6 months"
     effect: str  # what happens
     mechanism: str  # why / the causal link
     sub_assets_at_risk: list[str] = Field(default_factory=list)
