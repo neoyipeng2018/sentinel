@@ -109,6 +109,12 @@ def render_timeline(narratives: list[Narrative]) -> None:
             has_any_history = True
             timestamps = [datetime.fromisoformat(h["timestamp"]) for h in history]
             risk_values = [RISK_LEVEL_NUM.get(h["risk_level"], 1) for h in history]
+            signal_counts = [h.get("signal_count", 1) or 1 for h in history]
+            # Scale marker size: min 6, max 22, proportional to signal count
+            max_sc = max(signal_counts) if signal_counts else 1
+            marker_sizes = [
+                max(6, min(22, 6 + 16 * (sc / max_sc))) for sc in signal_counts
+            ]
 
             fig.add_trace(
                 go.Scatter(
@@ -118,22 +124,27 @@ def render_timeline(narratives: list[Narrative]) -> None:
                     name=label,
                     line=dict(color=color, width=2.5),
                     marker=dict(
-                        size=7,
+                        size=marker_sizes,
                         color=color,
                         line=dict(width=1.5, color="#0a0e14"),
                     ),
                     hovertemplate=(
                         f"<b>{narrative.title}</b><br>"
-                        "Risk: %{customdata}<br>"
+                        "Risk: %{customdata[0]}<br>"
+                        "Signals: %{customdata[1]}<br>"
                         "%{x|%b %d %H:%M}<extra></extra>"
                     ),
-                    customdata=[h["risk_level"].upper() for h in history],
+                    customdata=[
+                        [h["risk_level"].upper(), h.get("signal_count", 0)]
+                        for h in history
+                    ],
                 )
             )
         else:
             # Single data point — show as a dot at current position
             has_any_history = True
             risk_val = RISK_LEVEL_NUM.get(narrative.risk_level.value, 1)
+            sc = len(narrative.signals)
             fig.add_trace(
                 go.Scatter(
                     x=[narrative.last_updated],
@@ -141,7 +152,7 @@ def render_timeline(narratives: list[Narrative]) -> None:
                     mode="markers",
                     name=label,
                     marker=dict(
-                        size=10,
+                        size=max(8, min(22, 8 + sc)),
                         color=color,
                         line=dict(width=2, color="#0a0e14"),
                         symbol="diamond",
@@ -149,6 +160,7 @@ def render_timeline(narratives: list[Narrative]) -> None:
                     hovertemplate=(
                         f"<b>{narrative.title}</b><br>"
                         f"Risk: {narrative.risk_level.value.upper()}<br>"
+                        f"Signals: {sc}<br>"
                         "%{x|%b %d %H:%M}<extra></extra>"
                     ),
                 )
