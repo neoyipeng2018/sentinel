@@ -17,7 +17,6 @@ from models.schemas import (
     Signal,
     Signpost,
 )
-from storage.narrative_store import get_risk_score_history
 
 RISK_COLORS = {
     RiskLevel.CRITICAL: "#FF1744",
@@ -311,120 +310,160 @@ def _render_asset_impacts(
     return html
 
 
-LOOKBACK_OPTIONS = {
-    "24h": 24,
-    "3d": 72,
-    "7d": 168,
-    "30d": 720,
+RISK_LEVEL_NUM = {
+    "critical": 4,
+    "high": 3,
+    "medium": 2,
+    "low": 1,
 }
 
+# Distinct colors for narrative lines
+_LINE_PALETTE = [
+    "#00d4aa",  # teal
+    "#FF9100",  # orange
+    "#7C4DFF",  # purple
+    "#FF1744",  # red
+    "#00B0FF",  # blue
+    "#FFEA00",  # yellow
+    "#E040FB",  # pink
+    "#76FF03",  # lime
+    "#FF6D00",  # deep orange
+    "#18FFFF",  # cyan
+]
 
-def _render_risk_time_series(selected_assets: list[AssetClass] | None = None) -> None:
-    """Render a multi-line Plotly chart of risk scores over time."""
+
+def _short_title(title: str, max_len: int = 40) -> str:
+    if len(title) <= max_len:
+        return title
+    return title[: max_len - 1].rsplit(" ", 1)[0] + "…"
+
+
+def _render_narrative_trajectories(
+    narratives: list[Narrative],
+    selected_assets: list[AssetClass] | None = None,
+) -> None:
+    """Render a multi-line chart of narrative risk-level trajectories."""
+    from storage.narrative_store import get_narrative_history
+
     st.markdown(
         '<div class="section-header" style="margin-top: 16px;">'
-        "RISK TIME SERIES</div>",
+        "NARRATIVE TRAJECTORIES</div>",
         unsafe_allow_html=True,
     )
 
-    lookback_label = st.selectbox(
-        "Lookback period",
-        options=list(LOOKBACK_OPTIONS.keys()),
-        index=0,  # default 24h
-        label_visibility="collapsed",
-    )
-    lookback_hours = LOOKBACK_OPTIONS[lookback_label]
+    # Filter narratives by selected asset classes
+    if selected_assets:
+        asset_filter = set(selected_assets)
+        filtered = [
+            n for n in narratives
+            if asset_filter & set(n.affected_assets)
+        ]
+    else:
+        filtered = list(narratives)
 
-    history = get_risk_score_history(lookback_hours=lookback_hours)
-
-    if not history:
+    if not filtered:
         st.markdown(
             '<div class="cmd-panel" style="text-align: center; color: #4a5568;">'
-            "No time series data yet. Data accumulates with each refresh."
+            "No narratives for selected asset classes."
             "</div>",
             unsafe_allow_html=True,
         )
         return
-
-    # Group by asset class
-    asset_filter = set(selected_assets) if selected_assets else {ac for ac in AssetClass}
-    series: dict[str, dict] = {}
-    for row in history:
-        ac_value = row["asset_class"]
-        try:
-            ac = AssetClass(ac_value)
-        except ValueError:
-            continue
-        if ac not in asset_filter:
-            continue
-        if ac_value not in series:
-            series[ac_value] = {"timestamps": [], "scores": [], "counts": [], "titles": []}
-        series[ac_value]["timestamps"].append(datetime.fromisoformat(row["timestamp"]))
-        series[ac_value]["scores"].append(row["score"])
-        series[ac_value]["counts"].append(row["narrative_count"])
-        series[ac_value]["titles"].append(row["top_narrative_title"] or "—")
-
-    if not series:
-        st.markdown(
-            '<div class="cmd-panel" style="text-align: center; color: #4a5568;">'
-            "No data for selected asset classes in this period."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-        return
-
-    line_colors = {
-        "equities": "#00d4aa",
-        "credit": "#4fc3f7",
-        "rates": "#81d4fa",
-        "private_markets": "#ba68c8",
-        "real_estate": "#ff8a65",
-        "commodities": "#ffd54f",
-        "fx": "#e0e4ec",
-    }
 
     fig = go.Figure()
 
-    # Risk zone bands
-    zone_bands = [
-        (0, 2.5, "rgba(0, 230, 118, 0.04)", "Low"),
-        (2.5, 5, "rgba(255, 234, 0, 0.04)", "Medium"),
-        (5, 7.5, "rgba(255, 145, 0, 0.04)", "High"),
-        (7.5, 10, "rgba(255, 23, 68, 0.04)", "Critical"),
+    # Risk level zone bands
+    zone_colors = [
+        (0.5, 1.5, "rgba(0, 230, 118, 0.04)"),
+        (1.5, 2.5, "rgba(255, 234, 0, 0.04)"),
+        (2.5, 3.5, "rgba(255, 145, 0, 0.04)"),
+        (3.5, 4.5, "rgba(255, 23, 68, 0.04)"),
     ]
-    for y0, y1, fill, _ in zone_bands:
+    for y0, y1, fill in zone_colors:
         fig.add_hrect(y0=y0, y1=y1, fillcolor=fill, line_width=0, layer="below")
 
-    for ac_value, data in series.items():
-        label = ASSET_LABELS.get(AssetClass(ac_value), ac_value)
-        color = line_colors.get(ac_value, "#8892a4")
-        hover_text = [
-            f"<b>{label}</b><br>"
-            f"Score: {s:.1f}<br>"
-            f"Narratives: {c}<br>"
-            f"Top: {t}"
-            for s, c, t in zip(data["scores"], data["counts"], data["titles"])
-        ]
-        fig.add_trace(
-            go.Scatter(
-                x=data["timestamps"],
-                y=data["scores"],
-                mode="lines+markers",
-                name=label,
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-                hovertext=hover_text,
-                hoverinfo="text",
+    has_data = False
+
+    for i, narrative in enumerate(filtered):
+        history = get_narrative_history(narrative.id)
+        color = _LINE_PALETTE[i % len(_LINE_PALETTE)]
+        label = _short_title(narrative.title)
+
+        if history and len(history) > 1:
+            has_data = True
+            timestamps = [datetime.fromisoformat(h["timestamp"]) for h in history]
+            risk_values = [RISK_LEVEL_NUM.get(h["risk_level"], 1) for h in history]
+            signal_counts = [h.get("signal_count", 1) or 1 for h in history]
+            max_sc = max(signal_counts)
+            marker_sizes = [
+                max(6, min(22, 6 + 16 * (sc / max_sc))) for sc in signal_counts
+            ]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=timestamps,
+                    y=risk_values,
+                    mode="lines+markers",
+                    name=label,
+                    line=dict(color=color, width=2.5),
+                    marker=dict(
+                        size=marker_sizes,
+                        color=color,
+                        line=dict(width=1.5, color="#0a0e14"),
+                    ),
+                    hovertemplate=(
+                        f"<b>{narrative.title}</b><br>"
+                        "Risk: %{customdata[0]}<br>"
+                        "Signals: %{customdata[1]}<br>"
+                        "%{x|%b %d %H:%M}<extra></extra>"
+                    ),
+                    customdata=[
+                        [h["risk_level"].upper(), h.get("signal_count", 0)]
+                        for h in history
+                    ],
+                )
             )
+        else:
+            has_data = True
+            risk_val = RISK_LEVEL_NUM.get(narrative.risk_level.value, 1)
+            sc = len(narrative.signals)
+            fig.add_trace(
+                go.Scatter(
+                    x=[narrative.last_updated],
+                    y=[risk_val],
+                    mode="markers",
+                    name=label,
+                    marker=dict(
+                        size=max(8, min(22, 8 + sc)),
+                        color=color,
+                        line=dict(width=2, color="#0a0e14"),
+                        symbol="diamond",
+                    ),
+                    hovertemplate=(
+                        f"<b>{narrative.title}</b><br>"
+                        f"Risk: {narrative.risk_level.value.upper()}<br>"
+                        f"Signals: {sc}<br>"
+                        "%{x|%b %d %H:%M}<extra></extra>"
+                    ),
+                )
+            )
+
+    if not has_data:
+        st.markdown(
+            '<div class="cmd-panel" style="text-align: center; color: #4a5568;">'
+            "No trajectory data yet. Data builds with each refresh."
+            "</div>",
+            unsafe_allow_html=True,
         )
+        return
 
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         yaxis=dict(
-            range=[0, 10.5],
-            tickvals=[0, 2.5, 5, 7.5, 10],
-            ticktext=["0", "LOW", "MED", "HIGH", "CRIT"],
+            tickvals=[1, 2, 3, 4],
+            ticktext=["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+            range=[0.5, 4.5],
             gridcolor="#1a2332",
             tickfont=dict(family="SF Mono, Consolas, monospace", size=10, color="#4a5568"),
         ),
@@ -435,6 +474,11 @@ def _render_risk_time_series(selected_assets: list[AssetClass] | None = None) ->
         height=320,
         margin=dict(l=0, r=0, t=10, b=0),
         legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.15,
+            xanchor="left",
+            x=0,
             font=dict(family="SF Mono, Consolas, monospace", size=10, color="#8892a4"),
             bgcolor="rgba(0,0,0,0)",
         ),
@@ -566,8 +610,8 @@ def render_overview(
                     unsafe_allow_html=True,
                 )
 
-    # Risk time series chart
-    _render_risk_time_series(selected_assets)
+    # Narrative trajectory chart
+    _render_narrative_trajectories(narratives, selected_assets)
 
     # Emerging risk highlights
     _render_emerging_risks(narratives)
