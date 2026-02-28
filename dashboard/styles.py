@@ -35,6 +35,12 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid #1a2332 !important;
 }
 
+/* Hide sidebar collapse toggle to prevent hover glitch */
+button[data-testid="stSidebarCollapseButton"],
+button[data-testid="baseButton-headerNoPadding"] {
+    display: none !important;
+}
+
 section[data-testid="stSidebar"] .stMarkdown h1 {
     font-size: 1.1rem;
     color: #00d4aa;
