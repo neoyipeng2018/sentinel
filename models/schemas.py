@@ -26,6 +26,8 @@ class SignalSource(str, Enum):
     MARKET_DATA = "market_data"
     SOCIAL = "social"
     PREDICTION_MARKET = "prediction_market"
+    GOOGLE_TRENDS = "google_trends"
+    COT = "cot"
     CUSTOM = "custom"
 
 

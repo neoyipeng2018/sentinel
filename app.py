@@ -73,6 +73,9 @@ with st.sidebar:
     fetch_market = st.checkbox("Market Data", value=True)
     fetch_social = st.checkbox("Social (Reddit)", value=True)
     fetch_predictions = st.checkbox("Predictions (Kalshi/Polymarket)", value=True)
+    fetch_spreads = st.checkbox("Spreads & Yield Curve", value=True)
+    fetch_trends = st.checkbox("Google Trends", value=True)
+    fetch_cot = st.checkbox("CFTC Positioning (COT)", value=True)
     custom_signals_fn = get_custom_signals()
     fetch_custom = (
         st.checkbox("Custom Data", value=True) if custom_signals_fn else False

@@ -14,10 +14,13 @@ from ai.chains.signpost_generator import generate_signposts
 from ai.chains.trend_analyzer import compute_quantitative_trend
 from ai.llm import get_llm
 from config.overrides import get_custom_signals
+from sources.cot import fetch_cot_signals
 from sources.market import detect_anomalies, fetch_market_data
 from sources.news import fetch_news_signals
 from sources.predictions import fetch_prediction_signals
 from sources.social import fetch_reddit_signals
+from sources.spreads import fetch_spread_signals
+from sources.trends import fetch_trends_signals
 from storage.narrative_store import (
     clear_narratives,
     load_active_narratives,
@@ -52,6 +55,12 @@ def run_refresh_cycle(prefer_free: bool = True) -> int:
     signals.extend(fetch_reddit_signals())
 
     signals.extend(fetch_prediction_signals())
+
+    signals.extend(fetch_spread_signals())
+
+    signals.extend(fetch_trends_signals())
+
+    signals.extend(fetch_cot_signals())
 
     custom_fn = get_custom_signals()
     if custom_fn:
