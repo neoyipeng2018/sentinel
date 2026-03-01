@@ -72,6 +72,7 @@ with st.sidebar:
     fetch_news = st.checkbox("News (RSS)", value=True)
     fetch_market = st.checkbox("Market Data", value=True)
     fetch_social = st.checkbox("Social (Reddit)", value=True)
+    fetch_predictions = st.checkbox("Predictions (Kalshi/Polymarket)", value=True)
     custom_signals_fn = get_custom_signals()
     fetch_custom = (
         st.checkbox("Custom Data", value=True) if custom_signals_fn else False

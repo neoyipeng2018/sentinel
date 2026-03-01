@@ -16,6 +16,7 @@ from ai.llm import get_llm
 from config.overrides import get_custom_signals
 from sources.market import detect_anomalies, fetch_market_data
 from sources.news import fetch_news_signals
+from sources.predictions import fetch_prediction_signals
 from sources.social import fetch_reddit_signals
 from storage.narrative_store import (
     clear_narratives,
@@ -49,6 +50,8 @@ def run_refresh_cycle(prefer_free: bool = True) -> int:
     signals.extend(detect_anomalies(data))
 
     signals.extend(fetch_reddit_signals())
+
+    signals.extend(fetch_prediction_signals())
 
     custom_fn = get_custom_signals()
     if custom_fn:

@@ -38,6 +38,11 @@ def get_news_feeds() -> list[str] | None:
     return getattr(_lc, "NEWS_FEEDS", None)
 
 
+def get_prediction_categories() -> list[str] | None:
+    """Return custom prediction market category filter, or None for all."""
+    return getattr(_lc, "PREDICTION_CATEGORIES", None)
+
+
 def get_custom_signals() -> Callable[[], list] | None:
     """Return the user-defined signal fetcher, or None."""
     return getattr(_lc, "custom_signals", None)
